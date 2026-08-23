@@ -1,11 +1,17 @@
 package com.avantt_backend.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * DTO simples usado pela camada de controller/service.
  */
+@Schema(description = "Representa um exemplo simples com id e nome")
 public class ExampleDto {
 
+    @Schema(description = "Identificador único", example = "1")
     private Long id;
+
+    @Schema(description = "Nome descritivo", example = "Exemplo")
     private String name;
 
     public ExampleDto() {}
