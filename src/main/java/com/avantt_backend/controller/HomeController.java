@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.avantt_backend.config.ApiPaths;
 
 import java.util.List;
 
@@ -13,7 +14,7 @@ import java.util.List;
  * Exemplo de Controller REST para começar a estrutura MVC.
  */
 @RestController
-@RequestMapping("/api/example")
+@RequestMapping(ApiPaths.EXAMPLE)
 public class HomeController {
 
     private final ExampleService service;
