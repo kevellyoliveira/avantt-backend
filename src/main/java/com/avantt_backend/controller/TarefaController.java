@@ -1,6 +1,5 @@
 package com.avantt_backend.controller;
 
-import com.avantt_backend.config.ApiPaths;
 import com.avantt_backend.dto.TarefaRequestDTO;
 import com.avantt_backend.dto.TarefaResponseDTO;
 import com.avantt_backend.service.TarefaService;
@@ -9,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static com.avantt_backend.config.ApiPaths.API;
+import static com.avantt_backend.util.ApiPaths.TAREFAS;
 
 @RestController
 @RequestMapping
@@ -21,13 +20,13 @@ public class TarefaController {
         this.tarefaService = tarefaService;
     }
 
-    @PostMapping(path = API + "/tarefas", consumes = "application/json", produces = "application/json")
+    @PostMapping(path = TAREFAS, consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> createTarefa(@RequestBody TarefaRequestDTO request) {
         var created = tarefaService.create(request);
         return ResponseEntity.status(201).body(created);
     }
 
-    @GetMapping(path = API + "/tarefas", produces = "application/json")
+    @GetMapping(path = TAREFAS, produces = "application/json")
     public ResponseEntity<List<TarefaResponseDTO>> listTarefas(@RequestParam(value = "projetoId", required = false) String projetoId,
                                                               @RequestParam(value = "sprintId", required = false) String sprintId,
                                                               @RequestParam(value = "status", required = false) String status) {

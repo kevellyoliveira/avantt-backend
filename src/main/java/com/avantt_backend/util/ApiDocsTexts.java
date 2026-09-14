@@ -1,4 +1,4 @@
-package com.avantt_backend.docs;
+package com.avantt_backend.util;
 
 /**
  * Centraliza textos usados nas anotações OpenAPI/Swagger.
