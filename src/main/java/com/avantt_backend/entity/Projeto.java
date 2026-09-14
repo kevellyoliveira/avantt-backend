@@ -12,36 +12,37 @@ public class Projeto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false)
+    // maps to projeto.nome
+    @Column(name = "nome", nullable = false)
     private String name;
 
-    @Column(columnDefinition = "TEXT")
+    // maps to projeto.descricao
+    @Column(name = "descricao", columnDefinition = "TEXT")
     private String description;
 
+    // maps to projeto.cor
+    @Column(name = "cor", length = 20)
     private String color;
 
+    // maps to projeto.status
+    @Column(name = "status", length = 50)
     private String status;
 
+    // maps to projeto.data_inicio
+    @Column(name = "data_inicio")
     private LocalDate startDate;
 
+    // maps to projeto.data_fim
+    @Column(name = "data_fim")
     private LocalDate endDate;
 
+    // maps to projeto.progresso
+    @Column(name = "progresso")
     private Integer progress;
 
-    @Column(columnDefinition = "TEXT")
-    private String sprints; // stored as JSON
-
-    @Column(columnDefinition = "TEXT")
-    private String tasks; // stored as JSON
-
-    @Column(columnDefinition = "TEXT")
-    private String team; // JSON array
-
-    @Column(columnDefinition = "TEXT")
-    private String risks; // JSON array
-
-    @Column(columnDefinition = "TEXT")
-    private String milestones; // JSON array
+    // maps to projeto.risco (single string, nullable)
+    @Column(name = "risco", length = 255)
+    private String risks;
 
     public Projeto() {}
 
@@ -70,18 +71,7 @@ public class Projeto {
     public Integer getProgress() { return progress; }
     public void setProgress(Integer progress) { this.progress = progress; }
 
-    public String getSprints() { return sprints; }
-    public void setSprints(String sprints) { this.sprints = sprints; }
-
-    public String getTasks() { return tasks; }
-    public void setTasks(String tasks) { this.tasks = tasks; }
-
-    public String getTeam() { return team; }
-    public void setTeam(String team) { this.team = team; }
-
     public String getRisks() { return risks; }
     public void setRisks(String risks) { this.risks = risks; }
 
-    public String getMilestones() { return milestones; }
-    public void setMilestones(String milestones) { this.milestones = milestones; }
 }

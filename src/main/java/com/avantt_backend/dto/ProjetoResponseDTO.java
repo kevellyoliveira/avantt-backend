@@ -3,7 +3,7 @@ package com.avantt_backend.dto;
 import java.time.LocalDate;
 import java.util.List;
 
-public class ProjetoFrontendDTO {
+public class ProjetoResponseDTO {
     private String id;
     private String name;
     private String description;
@@ -20,7 +20,7 @@ public class ProjetoFrontendDTO {
     private List<String> risks;
     private List<MilestoneDTO> milestones;
 
-    public ProjetoFrontendDTO() {}
+    public ProjetoResponseDTO() {}
 
     // getters and setters
     public String getId() { return id; }

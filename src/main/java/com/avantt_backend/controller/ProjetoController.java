@@ -1,7 +1,6 @@
 package com.avantt_backend.controller;
 
-import com.avantt_backend.config.ApiPaths;
-import com.avantt_backend.dto.ProjetoFrontendDTO;
+import com.avantt_backend.dto.ProjetoResponseDTO;
 import com.avantt_backend.dto.ProjetoRequestDTO;
 import com.avantt_backend.service.ProjetoService;
 import jakarta.validation.Valid;
@@ -10,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static com.avantt_backend.config.ApiPaths.API;
+import static com.avantt_backend.util.ApiPaths.PROJETOS;
 
 @RestController
 @RequestMapping
@@ -22,15 +21,15 @@ public class ProjetoController {
         this.projetoService = projetoService;
     }
 
-    @PostMapping(path = API + "/projetos", consumes = "application/json", produces = "application/json")
+    @PostMapping(path = PROJETOS, consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> createProjeto(@Valid @RequestBody ProjetoRequestDTO request) {
         var created = projetoService.create(request);
         return ResponseEntity.status(201).body(created);
     }
 
-    @GetMapping(path = API + "/projetos", produces = "application/json")
-    public ResponseEntity<List<ProjetoFrontendDTO>> listProjetos() {
-        List<ProjetoFrontendDTO> list = projetoService.listAllForFrontend();
+    @GetMapping(path = PROJETOS, produces = "application/json")
+    public ResponseEntity<List<ProjetoResponseDTO>> listProjetos() {
+        List<ProjetoResponseDTO> list = projetoService.listAll();
         return ResponseEntity.ok(list);
     }
 }
