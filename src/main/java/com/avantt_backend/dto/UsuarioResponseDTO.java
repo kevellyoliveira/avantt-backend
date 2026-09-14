@@ -1,45 +1,45 @@
 package com.avantt_backend.dto;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 public class UsuarioResponseDTO {
-    private Integer id;
-    private String nome;
+    private String id;
+    private String name;
+    private String avatar;
+    private String color;
+    private String role;
+    private TasksDTO tasks;
+    private List<String> projects;
+    private int workload;
     private String email;
-    private LocalDateTime dataCadastro;
-    private Boolean isAtivo;
-    private Integer perfilId;
-    private String cargo;
-    private LocalDateTime dataDesativacao;
-    private Integer organizacaoId;
 
     public UsuarioResponseDTO() {}
 
     // getters and setters
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public String getNome() { return nome; }
-    public void setNome(String nome) { this.nome = nome; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getAvatar() { return avatar; }
+    public void setAvatar(String avatar) { this.avatar = avatar; }
+
+    public String getColor() { return color; }
+    public void setColor(String color) { this.color = color; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+
+    public TasksDTO getTasks() { return tasks; }
+    public void setTasks(TasksDTO tasks) { this.tasks = tasks; }
+
+    public List<String> getProjects() { return projects; }
+    public void setProjects(List<String> projects) { this.projects = projects; }
+
+    public int getWorkload() { return workload; }
+    public void setWorkload(int workload) { this.workload = workload; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-
-    public LocalDateTime getDataCadastro() { return dataCadastro; }
-    public void setDataCadastro(LocalDateTime dataCadastro) { this.dataCadastro = dataCadastro; }
-
-    public Boolean getIsAtivo() { return isAtivo; }
-    public void setIsAtivo(Boolean isAtivo) { this.isAtivo = isAtivo; }
-
-    public Integer getPerfilId() { return perfilId; }
-    public void setPerfilId(Integer perfilId) { this.perfilId = perfilId; }
-
-    public String getCargo() { return cargo; }
-    public void setCargo(String cargo) { this.cargo = cargo; }
-
-    public LocalDateTime getDataDesativacao() { return dataDesativacao; }
-    public void setDataDesativacao(LocalDateTime dataDesativacao) { this.dataDesativacao = dataDesativacao; }
-
-    public Integer getOrganizacaoId() { return organizacaoId; }
-    public void setOrganizacaoId(Integer organizacaoId) { this.organizacaoId = organizacaoId; }
 }

@@ -1,10 +1,8 @@
 package com.avantt_backend.service;
 
-import com.avantt_backend.dto.IdResponseDTO;
 import com.avantt_backend.dto.TasksDTO;
-import com.avantt_backend.dto.UsuarioFrontendDTO;
-import com.avantt_backend.dto.UsuarioRequestDTO;
 import com.avantt_backend.dto.UsuarioResponseDTO;
+import com.avantt_backend.dto.UsuarioRequestDTO;
 import com.avantt_backend.entity.Usuario;
 import com.avantt_backend.exception.ConflictException;
 import com.avantt_backend.exception.ResourceNotFoundException;
@@ -30,7 +28,7 @@ public class UsuarioService {
     }
 
     @Transactional
-    public UsuarioFrontendDTO create(UsuarioRequestDTO dto) {
+    public UsuarioResponseDTO create(UsuarioRequestDTO dto) {
         // email unique check
         if (usuarioRepository.existsByEmail(dto.getEmail())) {
             throw new ConflictException("Email já cadastrado");
@@ -49,7 +47,7 @@ public class UsuarioService {
         em.refresh(saved);
 
         // build frontend DTO including fields sent by frontend
-        UsuarioFrontendDTO f = new UsuarioFrontendDTO();
+        UsuarioResponseDTO f = new UsuarioResponseDTO();
         f.setId(saved.getId() == null ? null : String.valueOf(saved.getId()));
         f.setName(saved.getNome());
         f.setEmail(saved.getEmail());
@@ -63,7 +61,7 @@ public class UsuarioService {
     }
 
     @Transactional
-    public UsuarioFrontendDTO update(Integer id, UsuarioRequestDTO dto) {
+    public UsuarioResponseDTO update(Integer id, UsuarioRequestDTO dto) {
         Usuario u = usuarioRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
 
         if (dto.getEmail() != null && !dto.getEmail().equals(u.getEmail())) {
@@ -79,7 +77,7 @@ public class UsuarioService {
 
         Usuario saved = usuarioRepository.save(u);
 
-        UsuarioFrontendDTO f = new UsuarioFrontendDTO();
+        UsuarioResponseDTO f = new UsuarioResponseDTO();
         f.setId(saved.getId() == null ? null : String.valueOf(saved.getId()));
         f.setName(saved.getNome());
         f.setEmail(saved.getEmail());
@@ -92,26 +90,14 @@ public class UsuarioService {
         return f;
     }
 
-    // optional helper if you need full response mapping elsewhere
-    public UsuarioResponseDTO toResponse(Usuario u) {
-        UsuarioResponseDTO r = new UsuarioResponseDTO();
-        r.setId(u.getId());
-        r.setNome(u.getNome());
-        r.setEmail(u.getEmail());
-        r.setDataCadastro(u.getDataCadastro());
-        r.setIsAtivo(u.getIsAtivo());
-        r.setPerfilId(u.getPerfilId());
-        r.setCargo(u.getCargo());
-        r.setDataDesativacao(u.getDataDesativacao());
-        r.setOrganizacaoId(u.getOrganizacaoId());
-        return r;
-    }
+    // kept single response DTO approach: public mapping helpers can return frontend DTO
+    // If callers need the internal full response, we can add methods later. For now the app uses UsuarioFrontendDTO.
 
-    public java.util.List<UsuarioFrontendDTO> listAllForFrontend() {
+    public java.util.List<UsuarioResponseDTO> listAll() {
         java.util.List<Usuario> all = usuarioRepository.findAll();
-        java.util.List<UsuarioFrontendDTO> out = new java.util.ArrayList<>();
+        java.util.List<UsuarioResponseDTO> out = new java.util.ArrayList<>();
         for (Usuario u : all) {
-            UsuarioFrontendDTO f = new UsuarioFrontendDTO();
+            UsuarioResponseDTO f = new UsuarioResponseDTO();
             f.setId(u.getId() == null ? null : String.valueOf(u.getId()));
             f.setName(u.getNome());
             f.setEmail(u.getEmail());
