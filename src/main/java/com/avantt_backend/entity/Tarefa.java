@@ -11,6 +11,16 @@ public class Tarefa {
     private Integer id;
 
     private String titulo;
+    // coluna nome (NOT NULL) no banco - insistir em gravar
+    @Column(name = "nome", nullable = false)
+    private String nome;
+
+    // foreign keys
+    @Column(name = "projeto_id")
+    private Integer projetoId;
+
+    @Column(name = "sprint_id")
+    private Integer sprintId;
 
     private String project;
 
@@ -25,6 +35,9 @@ public class Tarefa {
     private String priority;
 
     private String status;
+
+    @Column(name = "atribuido_para")
+    private Integer atribuidoPara;
 
     private Integer daysDelayed;
 
@@ -46,14 +59,26 @@ public class Tarefa {
     public String getTitulo() { return titulo; }
     public void setTitulo(String titulo) { this.titulo = titulo; }
 
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
+
     public String getProject() { return project; }
     public void setProject(String project) { this.project = project; }
+
+    public Integer getProjetoId() { return projetoId; }
+    public void setProjetoId(Integer projetoId) { this.projetoId = projetoId; }
 
     public String getSprint() { return sprint; }
     public void setSprint(String sprint) { this.sprint = sprint; }
 
+    public Integer getSprintId() { return sprintId; }
+    public void setSprintId(Integer sprintId) { this.sprintId = sprintId; }
+
     public String getAssignee() { return assignee; }
     public void setAssignee(String assignee) { this.assignee = assignee; }
+
+    public Integer getAtribuidoPara() { return atribuidoPara; }
+    public void setAtribuidoPara(Integer atribuidoPara) { this.atribuidoPara = atribuidoPara; }
 
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }

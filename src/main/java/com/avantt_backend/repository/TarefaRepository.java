@@ -11,4 +11,10 @@ public interface TarefaRepository extends JpaRepository<Tarefa, Integer> {
     List<Tarefa> findByProject(String project);
     List<Tarefa> findByProjectAndSprint(String project, String sprint);
     List<Tarefa> findByStatus(String status);
+
+    @org.springframework.data.jpa.repository.Query(value = "SELECT COUNT(*) FROM tarefa t WHERE t.sprint_id = :sprintId", nativeQuery = true)
+    int countBySprintId(@org.springframework.data.repository.query.Param("sprintId") Integer sprintId);
+
+    @org.springframework.data.jpa.repository.Query(value = "SELECT COUNT(*) FROM tarefa t JOIN status_tarefa s ON t.status_id = s.id WHERE t.sprint_id = :sprintId AND s.nome = :statusName", nativeQuery = true)
+    int countBySprintIdAndStatusName(@org.springframework.data.repository.query.Param("sprintId") Integer sprintId, @org.springframework.data.repository.query.Param("statusName") String statusName);
 }

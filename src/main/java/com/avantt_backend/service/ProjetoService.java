@@ -5,6 +5,7 @@ import com.avantt_backend.dto.ProjetoRequestDTO;
 import com.avantt_backend.dto.ProjetoResponseDTO;
 import com.avantt_backend.dto.SprintsDTO;
 import com.avantt_backend.dto.ProjectTasksDTO;
+import com.avantt_backend.util.StatusUtils;
 import com.avantt_backend.entity.MarcoProjeto;
 import com.avantt_backend.entity.Projeto;
 import com.avantt_backend.entity.ProjetoUsuario;
@@ -55,7 +56,7 @@ public class ProjetoService {
         p.setName(dto.getName());
         p.setDescription(dto.getDescription());
         p.setColor(dto.getColor());
-        p.setStatus(dto.getStatus());
+        p.setStatus(StatusUtils.normalizeProjectStatus(dto.getStatus()));
         p.setStartDate(dto.getStartDate());
         p.setEndDate(dto.getEndDate());
         p.setProgress(dto.getProgress());

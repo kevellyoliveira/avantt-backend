@@ -1,12 +1,20 @@
 package com.avantt_backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.NotBlank;
+
 import java.time.LocalDate;
 import java.util.List;
 
 public class TarefaRequestDTO {
+
+    @NotBlank(message = "Titulo é obrigatório")
     private String title;
+
+    @NotBlank(message = "projeto é obrigatório")
     private String project;
+
+    @NotBlank(message = "sprint é obrigatório")
     private String sprint;
     private String assignee;
     private String avatar;
