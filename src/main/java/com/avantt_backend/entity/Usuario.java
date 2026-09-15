@@ -17,6 +17,10 @@ public class Usuario {
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
+    // password hash (BCrypt)
+    @Column(name = "senha")
+    private String senha;
+
     // Let the DB manage this column by default. We mark it as non-insertable so JPA does not try to set it.
     @Column(name = "data_cadastro", insertable = false, updatable = false)
     private LocalDateTime dataCadastro;
@@ -35,6 +39,19 @@ public class Usuario {
 
     @Column(name = "organizacao_id")
     private Integer organizacaoId;
+
+    // auth token for simple token-based auth (UUID). For production prefer JWT or refresh/token store.
+    @Column(name = "auth_token")
+    private String authToken;
+
+    @Column(name = "auth_token_expiry")
+    private java.time.LocalDateTime authTokenExpiry;
+
+    @Column(name = "reset_token")
+    private String resetToken;
+
+    @Column(name = "reset_token_expiry")
+    private java.time.LocalDateTime resetTokenExpiry;
 
     public Usuario() {
     }
@@ -66,4 +83,19 @@ public class Usuario {
 
     public Integer getOrganizacaoId() { return organizacaoId; }
     public void setOrganizacaoId(Integer organizacaoId) { this.organizacaoId = organizacaoId; }
+
+    public String getSenha() { return senha; }
+    public void setSenha(String senha) { this.senha = senha; }
+
+    public String getAuthToken() { return authToken; }
+    public void setAuthToken(String authToken) { this.authToken = authToken; }
+
+    public java.time.LocalDateTime getAuthTokenExpiry() { return authTokenExpiry; }
+    public void setAuthTokenExpiry(java.time.LocalDateTime authTokenExpiry) { this.authTokenExpiry = authTokenExpiry; }
+
+    public String getResetToken() { return resetToken; }
+    public void setResetToken(String resetToken) { this.resetToken = resetToken; }
+
+    public java.time.LocalDateTime getResetTokenExpiry() { return resetTokenExpiry; }
+    public void setResetTokenExpiry(java.time.LocalDateTime resetTokenExpiry) { this.resetTokenExpiry = resetTokenExpiry; }
 }

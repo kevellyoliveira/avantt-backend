@@ -32,4 +32,12 @@ public class Mensagens {
     public static final String MENSAGEM_ERRO_LISTAR_USUARIOS_404 = "Nenhum usuário encontrado.";
     public static final String MENSAGEM_ERRO_CRIAR_USUARIO_400 = "Não foi possível criar o usuário.";
     public static final String MENSAGEM_ERRO_CRIAR_USUARIO_409 = "Usuário já cadastrado.";
+
+    //AUTH
+    public static final String MENSAGEM_EMAIL_CADASTRADO_409 = "Email já cadastrado";
+    public static final String MENSAGEM_CREDENCIAIS_INVALIDAS_401 = "Credenciais inválidas";
+    public static final String MENSAGEM_ERRO_EMAIL_404 = "Email não encontrado";
+    public static final String MENSAGEM_ERRO_TOKEN_400 = "Token inválido ou expirado";
+
+
 }
