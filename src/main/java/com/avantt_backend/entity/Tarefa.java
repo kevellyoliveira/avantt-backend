@@ -36,6 +36,12 @@ public class Tarefa {
 
     private String status;
 
+    @Column(name = "prioridade_id")
+    private Integer prioridadeId;
+
+    @Column(name = "status_id")
+    private Integer statusId;
+
     @Column(name = "atribuido_para")
     private Integer atribuidoPara;
 
@@ -89,8 +95,14 @@ public class Tarefa {
     public String getPriority() { return priority; }
     public void setPriority(String priority) { this.priority = priority; }
 
+    public Integer getPrioridadeId() { return prioridadeId; }
+    public void setPrioridadeId(Integer prioridadeId) { this.prioridadeId = prioridadeId; }
+
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public Integer getStatusId() { return statusId; }
+    public void setStatusId(Integer statusId) { this.statusId = statusId; }
 
     public Integer getDaysDelayed() { return daysDelayed; }
     public void setDaysDelayed(Integer daysDelayed) { this.daysDelayed = daysDelayed; }
