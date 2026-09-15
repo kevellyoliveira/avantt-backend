@@ -58,16 +58,10 @@ public class UsuarioController {
         @ApiResponse(responseCode = "500", description = "Erro interno do servidor")
     })
     @GetMapping(path = USUARIOS, produces = "application/json")
-    public ResponseEntity<?> listUsuarios() {
+    public ResponseEntity<?> listUsuarios(@RequestParam(value = "projetoId", required = false) Integer projetoId) {
         try {
-
-            List<UsuarioResponseDTO> list = usuarioService.listAll();
-
-            if (list.isEmpty()) {
-                return ResponseEntity.status(404).body(MENSAGEM_ERRO_LISTAR_USUARIOS_404);
-            }
-
-            return ResponseEntity.status(200).body(list);
+            List<UsuarioResponseDTO> list = usuarioService.listAll(projetoId);
+            return ResponseEntity.ok(list);
 
         } catch (Exception e) {
             return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);

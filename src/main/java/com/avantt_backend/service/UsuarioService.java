@@ -94,26 +94,94 @@ public class UsuarioService {
     // If callers need the internal full response, we can add methods later. For now the app uses UsuarioFrontendDTO.
 
     public java.util.List<UsuarioResponseDTO> listAll() {
-        java.util.List<Usuario> all = usuarioRepository.findAll();
-        java.util.List<UsuarioResponseDTO> out = new java.util.ArrayList<>();
-        for (Usuario u : all) {
-            UsuarioResponseDTO f = new UsuarioResponseDTO();
-            f.setId(u.getId() == null ? null : String.valueOf(u.getId()));
-            f.setName(u.getNome());
-            f.setEmail(u.getEmail());
-            // role maps to cargo
-            f.setRole(u.getCargo());
-            // avatar: initials from name
-            f.setAvatar(generateInitials(u.getNome()));
-            // color: fixed default (could be improved to be deterministic)
-            f.setColor("#2563eb");
-            // tasks: default zeros for now
-            f.setTasks(new TasksDTO(0,0,0,0));
-            f.setProjects(new java.util.ArrayList<>());
-            f.setWorkload(0);
-            out.add(f);
+        return listAll(null);
+    }
+
+    public java.util.List<UsuarioResponseDTO> listAll(Integer projetoId) {
+        // if projetoId provided: return users that belong to that project (active users)
+        // otherwise return all active users with their projects (LEFT JOIN)
+        java.util.Map<Integer, UsuarioResponseDTO> map = new java.util.LinkedHashMap<>();
+
+        if (projetoId != null) {
+            // query users that are linked to the given project
+            String sql = "SELECT u.id, u.nome, u.email, u.cargo FROM usuario u " +
+                    "JOIN projeto_usuario pu ON pu.usuario_id = u.id " +
+                    "WHERE pu.projeto_id = :pid AND u.is_ativo = TRUE " +
+                    "ORDER BY u.nome";
+            var q = em.createNativeQuery(sql);
+            q.setParameter("pid", projetoId);
+            @SuppressWarnings("unchecked")
+            java.util.List<Object[]> rows = q.getResultList();
+            for (Object[] row : rows) {
+                Integer uid = row[0] == null ? null : ((Number) row[0]).intValue();
+                String nome = row[1] == null ? "" : row[1].toString();
+                String email = row[2] == null ? "" : row[2].toString();
+                String cargo = row[3] == null ? "" : row[3].toString();
+
+                UsuarioResponseDTO u = new UsuarioResponseDTO();
+                u.setId(uid == null ? "" : String.valueOf(uid));
+                u.setName(nome);
+                u.setEmail(email);
+                u.setRole(cargo == null ? "" : cargo);
+                u.setAvatar(generateInitials(nome));
+                u.setColor("#4B7BF5");
+                u.setTasks(new TasksDTO(0,0,0,0));
+                u.setProjects(new java.util.ArrayList<>());
+                u.setWorkload(0);
+                // fetch project name to include in projects array
+                var projOpt = em.createNativeQuery("SELECT nome FROM projeto WHERE id = :pid").setParameter("pid", projetoId).getResultList();
+                if (!projOpt.isEmpty()) {
+                    Object pname = ((java.util.List)projOpt).get(0);
+                    String projectName = pname == null ? "" : pname.toString();
+                    u.getProjects().add(projectName);
+                }
+
+                map.put(uid, u);
+            }
+
+            return new java.util.ArrayList<>(map.values());
         }
-        return out;
+
+        // geral: LEFT JOIN users and projects
+        String sql = "SELECT u.id AS usuario_id, u.nome AS usuario_nome, u.email, u.cargo, u.is_ativo, p.id AS projeto_id, p.nome AS projeto_nome " +
+                "FROM usuario u " +
+                "LEFT JOIN projeto_usuario pu ON pu.usuario_id = u.id " +
+                "LEFT JOIN projeto p ON p.id = pu.projeto_id " +
+                "WHERE u.is_ativo = TRUE " +
+                "ORDER BY u.nome, p.nome";
+        var q = em.createNativeQuery(sql);
+        @SuppressWarnings("unchecked")
+        java.util.List<Object[]> rows = q.getResultList();
+
+        for (Object[] row : rows) {
+            Integer uid = row[0] == null ? null : ((Number) row[0]).intValue();
+            String nome = row[1] == null ? "" : row[1].toString();
+            String email = row[2] == null ? "" : row[2].toString();
+            String cargo = row[3] == null ? "" : row[3].toString();
+            // row[4] is is_ativo
+            String projetoNome = row[6] == null ? null : row[6].toString();
+
+            if (!map.containsKey(uid)) {
+                UsuarioResponseDTO u = new UsuarioResponseDTO();
+                u.setId(uid == null ? "" : String.valueOf(uid));
+                u.setName(nome == null ? "" : nome);
+                u.setEmail(email == null ? "" : email);
+                u.setRole(cargo == null ? "" : cargo);
+                u.setAvatar(generateInitials(nome));
+                u.setColor("#4B7BF5");
+                u.setTasks(new TasksDTO(0,0,0,0));
+                u.setProjects(new java.util.ArrayList<>());
+                u.setWorkload(0);
+                map.put(uid, u);
+            }
+
+            if (projetoNome != null && !projetoNome.isBlank()) {
+                var u = map.get(uid);
+                if (!u.getProjects().contains(projetoNome)) u.getProjects().add(projetoNome);
+            }
+        }
+
+        return new java.util.ArrayList<>(map.values());
     }
 
     private String generateInitials(String nome) {
@@ -122,8 +190,16 @@ public class UsuarioService {
         if (parts.length == 1) {
             return parts[0].substring(0, Math.min(2, parts[0].length())).toUpperCase();
         }
-        String first = parts[0].substring(0,1);
-        String last = parts[parts.length-1].substring(0,1);
-        return (first + last).toUpperCase();
+        // build up to 3 initials: first, second (if present), last
+        StringBuilder sb = new StringBuilder();
+        sb.append(parts[0].substring(0,1));
+        if (parts.length >= 3) {
+            sb.append(parts[1].substring(0,1));
+            sb.append(parts[parts.length-1].substring(0,1));
+        } else {
+            // two parts only: first + last
+            sb.append(parts[parts.length-1].substring(0,1));
+        }
+        return sb.toString().toUpperCase();
     }
 }
