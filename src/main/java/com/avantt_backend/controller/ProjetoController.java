@@ -2,6 +2,7 @@ package com.avantt_backend.controller;
 
 import com.avantt_backend.dto.ProjetoResponseDTO;
 import com.avantt_backend.dto.ProjetoRequestDTO;
+import com.avantt_backend.exception.ApiException;
 import com.avantt_backend.service.ProjetoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -46,6 +47,9 @@ public class ProjetoController {
             }
 
             return ResponseEntity.status(201).body(created);
+
+        } catch (ApiException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
 
         } catch (Exception e) {
             return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);

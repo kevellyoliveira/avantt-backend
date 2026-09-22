@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -58,8 +59,14 @@ public class ProjetoService {
         p.setColor(dto.getColor());
         p.setStatus(StatusUtils.normalizeProjectStatus(dto.getStatus()));
         p.setStartDate(dto.getStartDate());
-        p.setEndDate(dto.getEndDate());
         p.setProgress(dto.getProgress());
+
+      //  p.setEndDate(dto.getEndDate());
+
+        if (dto.getEndDate() != null &&
+                dto.getEndDate().isBefore(dto.getStartDate().plusDays(15))) {
+            throw new ApiException("A data de fim deve ser pelo menos 15 dias após a data de início");
+        }
 
         // risks: frontend sends list, DB expects a single VARCHAR nullable
         if (dto.getRisks() == null || dto.getRisks().isEmpty()) {
