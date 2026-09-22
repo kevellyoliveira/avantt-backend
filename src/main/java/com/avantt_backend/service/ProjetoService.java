@@ -61,11 +61,11 @@ public class ProjetoService {
         p.setStartDate(dto.getStartDate());
         p.setProgress(dto.getProgress());
 
-      //  p.setEndDate(dto.getEndDate());
-
         if (dto.getEndDate() != null &&
                 dto.getEndDate().isBefore(dto.getStartDate().plusDays(15))) {
             throw new ApiException("A data de fim deve ser pelo menos 15 dias após a data de início");
+        } else {
+            p.setEndDate(dto.getEndDate());
         }
 
         // risks: frontend sends list, DB expects a single VARCHAR nullable

@@ -3,6 +3,7 @@ package com.avantt_backend.service;
 import com.avantt_backend.dto.SprintRequestDTO;
 import com.avantt_backend.dto.SprintResponseDTO;
 import com.avantt_backend.entity.Sprint;
+import com.avantt_backend.exception.ApiException;
 import com.avantt_backend.repository.ProjetoRepository;
 import com.avantt_backend.repository.SprintRepository;
 import com.avantt_backend.repository.TarefaRepository;
@@ -53,7 +54,14 @@ public class SprintService {
         s.setProjetoId(projeto.getId());
         s.setNome(dto.getName());
         s.setDataInicio(dto.getStartDate());
-        s.setDataFim(dto.getEndDate());
+
+        if (dto.getEndDate() != null &&
+                dto.getEndDate().isBefore(dto.getStartDate().plusDays(15))) {
+            throw new ApiException("A data de fim deve ser pelo menos 15 dias após a data de início");
+        } else {
+            s.setDataFim(dto.getEndDate());
+        }
+
         // default status for a newly created sprint
         s.setStatus("Planejada");
 

@@ -2,6 +2,7 @@ package com.avantt_backend.controller;
 
 import com.avantt_backend.dto.SprintRequestDTO;
 import com.avantt_backend.dto.SprintResponseDTO;
+import com.avantt_backend.exception.ApiException;
 import com.avantt_backend.service.SprintService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,8 +35,10 @@ public class SprintController {
         try {
             var created = sprintService.create(request);
             return ResponseEntity.status(201).body(created);
-        } catch (com.avantt_backend.exception.ResourceNotFoundException e) {
-            return ResponseEntity.status(404).body(e.getMessage());
+
+        } catch (ApiException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+
         } catch (Exception e) {
             return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
         }
