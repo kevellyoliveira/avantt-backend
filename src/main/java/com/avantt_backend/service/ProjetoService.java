@@ -1,12 +1,10 @@
 package com.avantt_backend.service;
 
-import com.avantt_backend.dto.MilestoneDTO;
 import com.avantt_backend.dto.ProjetoRequestDTO;
 import com.avantt_backend.dto.ProjetoResponseDTO;
 import com.avantt_backend.dto.SprintsDTO;
 import com.avantt_backend.dto.ProjectTasksDTO;
 import com.avantt_backend.util.StatusUtils;
-import com.avantt_backend.entity.MarcoProjeto;
 import com.avantt_backend.entity.Projeto;
 import com.avantt_backend.entity.ProjetoUsuario;
 import com.avantt_backend.entity.ProjetoUsuarioId;
@@ -25,7 +23,6 @@ public class ProjetoService {
     private final ProjetoRepository projetoRepository;
     private final UsuarioRepository usuarioRepository;
     private final ProjetoUsuarioRepository projetoUsuarioRepository;
-    private final MarcoProjetoRepository marcoProjetoRepository;
     private final SprintService sprintService;
     private final TarefaService tarefaService;
     private final SprintRepository sprintRepository;
@@ -36,7 +33,6 @@ public class ProjetoService {
     public ProjetoService(ProjetoRepository projetoRepository,
                           UsuarioRepository usuarioRepository,
                           ProjetoUsuarioRepository projetoUsuarioRepository,
-                          MarcoProjetoRepository marcoProjetoRepository,
                           SprintService sprintService,
                           TarefaService tarefaService,
                           SprintRepository sprintRepository,
@@ -44,7 +40,6 @@ public class ProjetoService {
         this.projetoRepository = projetoRepository;
         this.usuarioRepository = usuarioRepository;
         this.projetoUsuarioRepository = projetoUsuarioRepository;
-        this.marcoProjetoRepository = marcoProjetoRepository;
         this.sprintService = sprintService;
         this.tarefaService = tarefaService;
         this.sprintRepository = sprintRepository;
@@ -66,14 +61,6 @@ public class ProjetoService {
             throw new ApiException("A data de fim deve ser pelo menos 15 dias após a data de início");
         } else {
             p.setEndDate(dto.getEndDate());
-        }
-
-        // risks: frontend sends list, DB expects a single VARCHAR nullable
-        if (dto.getRisks() == null || dto.getRisks().isEmpty()) {
-            p.setRisks(null);
-        } else {
-            // join into a single string
-            p.setRisks(String.join("; ", dto.getRisks()));
         }
 
         Projeto saved = projetoRepository.save(p);
@@ -101,18 +88,6 @@ public class ProjetoService {
                 pu.setId(new ProjetoUsuarioId(saved.getId(), usuarioId));
                 pu.setPapel(null);
                 projetoUsuarioRepository.save(pu);
-            }
-        }
-
-        // create milestones
-        if (dto.getMilestones() != null) {
-            for (MilestoneDTO m : dto.getMilestones()) {
-                MarcoProjeto mp = new MarcoProjeto();
-                mp.setProjetoId(saved.getId());
-                mp.setNome(m.getName());
-                mp.setData(m.getDate());
-                mp.setConcluido(m.isDone());
-                marcoProjetoRepository.save(mp);
             }
         }
 
@@ -179,33 +154,10 @@ public class ProjetoService {
                 teamNames = temp;
             }
 
-            // risks -> stored as single string; convert to list for frontend
-            List<String> risks = java.util.Collections.emptyList();
-            if (p.getRisks() != null && !p.getRisks().isBlank()) {
-                risks = java.util.Arrays.stream(p.getRisks().split(";"))
-                        .map(String::trim).filter(s0 -> !s0.isEmpty()).toList();
-            }
-
-            // milestones -> load from marco_projeto
-            List<MilestoneDTO> milestones = java.util.Collections.emptyList();
-            var mlist = marcoProjetoRepository.findByProjetoId(p.getId());
-            if (mlist != null && !mlist.isEmpty()) {
-                var temp = new java.util.ArrayList<MilestoneDTO>();
-                for (var mp : mlist) {
-                    MilestoneDTO md = new MilestoneDTO();
-                    md.setName(mp.getNome());
-                    md.setDate(mp.getData());
-                    md.setDone(mp.getConcluido() == null ? false : mp.getConcluido());
-                    temp.add(md);
-                }
-                milestones = temp;
-            }
-
             f.setSprints(s);
             f.setTasks(t);
             f.setTeam(teamNames);
-            f.setRisks(risks);
-            f.setMilestones(milestones);
+
         } catch (Exception e) {
             throw new ApiException("Erro ao desserializar campos JSON", e);
         }

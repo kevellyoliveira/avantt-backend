@@ -40,10 +40,6 @@ public class Projeto {
     @Column(name = "progresso")
     private Integer progress;
 
-    // maps to projeto.risco (single string, nullable)
-    @Column(name = "risco", length = 255)
-    private String risks;
-
     public Projeto() {}
 
     // getters and setters
@@ -70,8 +66,5 @@ public class Projeto {
 
     public Integer getProgress() { return progress; }
     public void setProgress(Integer progress) { this.progress = progress; }
-
-    public String getRisks() { return risks; }
-    public void setRisks(String risks) { this.risks = risks; }
 
 }

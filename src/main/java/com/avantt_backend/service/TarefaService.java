@@ -3,6 +3,7 @@ package com.avantt_backend.service;
 import com.avantt_backend.dto.TarefaRequestDTO;
 import com.avantt_backend.dto.TarefaResponseDTO;
 import com.avantt_backend.entity.Tarefa;
+import com.avantt_backend.exception.ApiException;
 import com.avantt_backend.repository.ProjetoRepository;
 import com.avantt_backend.repository.SprintRepository;
 import com.avantt_backend.repository.TarefaRepository;
@@ -18,6 +19,7 @@ import com.avantt_backend.util.StatusUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -89,7 +91,14 @@ public class TarefaService {
         t.setStatus(statusNorm);
 
         t.setDaysDelayed(dto.getDaysDelayed() == null ? 0 : dto.getDaysDelayed());
+
+        if (dto.getPlannedEnd().isAfter(sprint.getDataFim())) {
+            throw new ApiException(
+                    "A data de entrega deve ser até a data de fim da sprint"
+            );
+        }
         t.setPlannedEnd(dto.getPlannedEnd());
+
         t.setEstimatedHours(dto.getEstimatedHours() == null ? 0 : dto.getEstimatedHours());
         t.setBlockedBy(dto.getBlockedBy());
         try {

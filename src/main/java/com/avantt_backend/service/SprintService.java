@@ -12,9 +12,11 @@ import com.avantt_backend.repository.UsuarioRepository;
 import com.avantt_backend.entity.ProjetoUsuario;
 import com.avantt_backend.entity.ProjetoUsuarioId;
 import com.avantt_backend.entity.Usuario;
+
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,7 +48,8 @@ public class SprintService {
     public SprintResponseDTO create(SprintRequestDTO dto) {
         // Find project by name
         var projetoOpt = projetoRepository.findByName(dto.getProject());
-        if (projetoOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Projeto não encontrado: " + dto.getProject());
+        if (projetoOpt.isEmpty())
+            throw new com.avantt_backend.exception.ResourceNotFoundException("Projeto não encontrado: " + dto.getProject());
         var projeto = projetoOpt.get();
 
         Sprint s = new Sprint();
@@ -55,15 +58,28 @@ public class SprintService {
         s.setNome(dto.getName());
         s.setDataInicio(dto.getStartDate());
 
-        if (dto.getEndDate() != null &&
-                dto.getEndDate().isBefore(dto.getStartDate().plusDays(15))) {
-            throw new ApiException("A data de fim deve ser pelo menos 15 dias após a data de início");
-        } else {
-            s.setDataFim(dto.getEndDate());
+
+        if (dto.getStartDate().isBefore(projeto.getStartDate())) {
+            throw new ApiException(
+                    "A data de início da sprint não pode ser anterior à data de início do projeto"
+            );
         }
 
-        // default status for a newly created sprint
-        s.setStatus("Planejada");
+
+        if (dto.getEndDate().isBefore(dto.getStartDate().plusDays(15))) {
+            throw new ApiException(
+                    "A data de fim da Sprint deve ser pelo menos 15 dias após a data de início"
+            );
+        }
+
+        if (dto.getEndDate().isAfter(projeto.getEndDate())) {
+            throw new ApiException(
+                    "A data de fim da sprint não pode ser posterior à data de fim do projeto"
+            );
+        }
+
+
+        s.setDataFim(dto.getEndDate());
 
         Sprint saved = sprintRepository.save(s);
 
@@ -110,7 +126,8 @@ public class SprintService {
             Integer pid = null;
             try {
                 pid = Integer.valueOf(projetoId.replaceAll("[^0-9]", ""));
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             if (pid == null) {
                 // not numeric, try to find by name
                 projetoRepository.findByName(projetoId).ifPresent(p -> {

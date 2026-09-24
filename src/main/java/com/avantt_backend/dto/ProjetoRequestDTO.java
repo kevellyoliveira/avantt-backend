@@ -35,10 +35,6 @@ public class ProjetoRequestDTO {
 
     private List<String> team;
 
-    private List<String> risks;
-
-    private List<MilestoneDTO> milestones;
-
     public ProjetoRequestDTO() {}
 
     // getters and setters
@@ -72,9 +68,5 @@ public class ProjetoRequestDTO {
     public List<String> getTeam() { return team; }
     public void setTeam(List<String> team) { this.team = team; }
 
-    public List<String> getRisks() { return risks; }
-    public void setRisks(List<String> risks) { this.risks = risks; }
 
-    public List<MilestoneDTO> getMilestones() { return milestones; }
-    public void setMilestones(List<MilestoneDTO> milestones) { this.milestones = milestones; }
 }
