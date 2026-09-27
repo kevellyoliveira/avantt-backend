@@ -15,6 +15,7 @@ public class ProjetoRequestDTO {
 
     private String color;
 
+    @NotNull(message = "statusId é obrigatório")
     private Integer statusId;
 
     @NotNull(message = "Data de início é obrigatória")

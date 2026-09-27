@@ -40,9 +40,7 @@ public class ProjetoController {
     @PostMapping(path = PROJETOS, consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> createProjeto(@Valid @RequestBody ProjetoRequestDTO request) {
         try {
-            if (request.getStatusId() == null) {
-                return ResponseEntity.status(400).body("O campo statusId é obrigatório.");
-            }
+            // basic validations are performed by DTO (@Valid)
             var created = projetoService.create(request);
 
             if (created == null) {

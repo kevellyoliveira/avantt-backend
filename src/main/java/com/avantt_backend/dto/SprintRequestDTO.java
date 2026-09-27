@@ -11,6 +11,7 @@ import java.util.List;
 public class SprintRequestDTO {
     private String name;
     private Integer projectId;
+    @jakarta.validation.constraints.NotNull(message = "projectId é obrigatório")
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     @FutureOrPresent(message = "Data de início deve ser uma data futura ou presente")
@@ -30,6 +31,7 @@ public class SprintRequestDTO {
     private List<Integer> team;
     private List<Integer> addTeam;
     private List<Integer> removeTeam;
+    @NotNull(message = "statusId é obrigatório")
     private Integer statusId;
 
     public SprintRequestDTO() {}

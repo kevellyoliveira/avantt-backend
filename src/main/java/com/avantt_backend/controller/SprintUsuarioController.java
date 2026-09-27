@@ -9,6 +9,7 @@ import com.avantt_backend.repository.UsuarioRepository;
 import com.avantt_backend.entity.Sprint;
 import com.avantt_backend.entity.Usuario;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,10 +40,9 @@ public class SprintUsuarioController {
     }
 
     @PostMapping(path = "/{sprintId}/usuarios", consumes = "application/json", produces = "application/json")
-    public ResponseEntity<?> addUserToSprint(@PathVariable Integer sprintId, @RequestBody java.util.Map<String,Integer> body) {
+    public ResponseEntity<?> addUserToSprint(@PathVariable Integer sprintId, @Valid @RequestBody com.avantt_backend.dto.SprintUsuarioRequestDTO body) {
         try {
-            Integer usuarioId = body.get("usuarioId");
-            if (usuarioId == null) return ResponseEntity.status(400).body("usuarioId é obrigatório");
+            Integer usuarioId = body.getUsuarioId();
 
             // verify sprint exists
             Sprint s = sprintRepository.findById(sprintId).orElse(null);

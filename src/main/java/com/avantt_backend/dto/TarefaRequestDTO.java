@@ -15,7 +15,7 @@ public class TarefaRequestDTO {
     @NotBlank(message = "Titulo é obrigatório")
     private String title;
 
-    @NotNull(message = "projetoId é obrigatório")
+    @NotNull(message = "projectId é obrigatório")
     private Integer projectId;
 
     @NotNull(message = "sprintId é obrigatório")
@@ -25,6 +25,7 @@ public class TarefaRequestDTO {
     private String avatar;
     private String avatarColor;
     private String priority;
+    @NotNull(message = "statusId é obrigatório")
     private Integer statusId;
     private Integer prioridadeId;
     private Integer daysDelayed;

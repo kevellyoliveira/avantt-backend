@@ -44,6 +44,10 @@ public class UsuarioController {
                 return ResponseEntity.status(409).body(MENSAGEM_ERRO_CRIAR_USUARIO_409);
             }
             return ResponseEntity.status(201).body(response);
+        } catch (com.avantt_backend.exception.ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
         }

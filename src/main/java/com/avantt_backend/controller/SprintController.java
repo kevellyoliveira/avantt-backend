@@ -34,15 +34,7 @@ public class SprintController {
             @Parameter(description = "Dados da sprint a ser criada", required = true)
             @Valid @RequestBody SprintRequestDTO request) {
         try {
-            // require status id
-            if (request.getStatusId() == null) {
-                return ResponseEntity.status(400).body("O campo statusId é obrigatório.");
-            }
-            // require project id (use id to avoid ambiguity)
-            if (request.getProjectId() == null) {
-                return ResponseEntity.status(400).body("O campo projectId é obrigatório.");
-            }
-
+            // basic null/format validations are handled by DTO (@Valid)
             var created = sprintService.create(request);
             return ResponseEntity.status(201).body(created);
 

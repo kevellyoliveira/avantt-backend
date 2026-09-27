@@ -55,8 +55,7 @@ public class ProjetoService {
         p.setName(dto.getName());
         p.setDescription(dto.getDescription());
         p.setColor(dto.getColor());
-        // require statusId and persist id
-        if (dto.getStatusId() == null) throw new com.avantt_backend.exception.ApiException("O campo statusId é obrigatório");
+        // status resolution: dto validation ensures statusId presence
         var stOpt = statusTarefaRepository.findById(dto.getStatusId());
         if (stOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Status não encontrado: id=" + dto.getStatusId());
         p.setStatusId(dto.getStatusId());

@@ -29,18 +29,9 @@ public class TarefaController {
     @PostMapping(consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> create(
             @Parameter(description = "Dados da tarefa a ser criada", required = true)
-            @RequestBody TarefaRequestDTO request) {
+            @Valid @RequestBody TarefaRequestDTO request) {
         try {
-            if (request.getStatusId() == null) {
-                return ResponseEntity.status(400).body("O campo statusId é obrigatório.");
-            }
-            if (request.getProjectId() == null) {
-                return ResponseEntity.status(400).body("O campo projectId é obrigatório.");
-            }
-            if (request.getSprintId() == null) {
-                return ResponseEntity.status(400).body("O campo sprintId é obrigatório.");
-            }
-            // rename: accept assigneeId in request body
+            // validations for required fields are handled by DTO (@Valid)
             var created = tarefaService.create(request);
             return ResponseEntity.status(201).body(created);
         } catch (IllegalArgumentException e) {
@@ -105,7 +96,7 @@ public class TarefaController {
     public ResponseEntity<?> updateTask(
             @Parameter(description = "ID da tarefa a ser atualizada", required = true)
             @PathVariable Integer id,
-            @RequestBody TarefaRequestDTO request) {
+            @Valid @RequestBody TarefaRequestDTO request) {
         try {
             var updated = tarefaService.update(id, request);
             return ResponseEntity.ok(updated);

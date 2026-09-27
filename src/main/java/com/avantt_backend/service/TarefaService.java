@@ -52,16 +52,13 @@ public class TarefaService {
 
     @Transactional
     public TarefaResponseDTO create(TarefaRequestDTO dto) {
-        if (dto.getTitle() == null || dto.getTitle().isBlank()) throw new IllegalArgumentException("title is required");
-
+        // basic field validations (not null/blank) are handled by DTO annotations
         // resolve project by id
-        if (dto.getProjectId() == null) throw new com.avantt_backend.exception.ApiException("O campo projectId é obrigatório");
         var projOpt = projetoRepository.findById(dto.getProjectId());
         if (projOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Projeto não encontrado: id=" + dto.getProjectId());
         var proj = projOpt.get();
 
         // resolve sprint by id
-        if (dto.getSprintId() == null) throw new com.avantt_backend.exception.ApiException("O campo sprintId é obrigatório");
         var sprintOpt = sprintRepository.findById(dto.getSprintId());
         if (sprintOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Sprint não encontrada: id=" + dto.getSprintId());
         var sprint = sprintOpt.get();
@@ -119,8 +116,7 @@ public class TarefaService {
         if (priority == null) priority = "média";
         t.setPriority(priority);
 
-        // require statusId and resolve name
-        if (dto.getStatusId() == null) throw new IllegalArgumentException("statusId is required");
+        // require statusId and resolve name (dto validation ensures not null)
         var stOpt = statusTarefaRepository.findById(dto.getStatusId());
         if (stOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Status não encontrado: id=" + dto.getStatusId());
         t.setStatusId(dto.getStatusId());

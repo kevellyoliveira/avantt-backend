@@ -177,8 +177,7 @@ public class SprintService {
 
     @Transactional
     public SprintResponseDTO create(SprintRequestDTO dto) {
-        // Find project by id (avoid ambiguous names)
-        if (dto.getProjectId() == null) throw new com.avantt_backend.exception.ApiException("O campo projectId é obrigatório");
+        // Find project by id (avoid ambiguous names) - DTO validation ensures projectId presence
         var projetoOpt = projetoRepository.findById(dto.getProjectId());
         if (projetoOpt.isEmpty())
             throw new com.avantt_backend.exception.ResourceNotFoundException("Projeto não encontrado: id=" + dto.getProjectId());
@@ -212,8 +211,7 @@ public class SprintService {
 
 
         s.setDataFim(dto.getEndDate());
-        // status resolution: require statusId and persist id
-        if (dto.getStatusId() == null) throw new com.avantt_backend.exception.ApiException("O campo statusId é obrigatório");
+        // status resolution: dto validation ensures statusId not null
         var stOpt = statusTarefaRepository.findById(dto.getStatusId());
         if (stOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Status não encontrado: id=" + dto.getStatusId());
         s.setStatusId(dto.getStatusId());
