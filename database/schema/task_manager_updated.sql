@@ -57,21 +57,37 @@
     -- USUARIO
     -- =========================================================
 
-    CREATE TABLE IF NOT EXISTS usuario (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        nome VARCHAR(255) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_ativo BOOLEAN DEFAULT TRUE,
-        perfil_id INT,
-        cargo VARCHAR(100),
-        data_desativacao TIMESTAMP NULL,
-        organizacao_id INT,
+CREATE TABLE IF NOT EXISTS usuario (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_ativo BOOLEAN DEFAULT TRUE,
+    perfil_id INT,
+    cargo VARCHAR(100),
+    data_desativacao TIMESTAMP NULL,
+    organizacao_id INT,
 
-        FOREIGN KEY (organizacao_id) REFERENCES organizacao(id),
-        FOREIGN KEY (perfil_id) REFERENCES perfil(id)
-    );
+    -- Autenticação
+    senha VARCHAR(255) NULL,
+    auth_token VARCHAR(255) NULL,
+    auth_token_expiry DATETIME NULL,
 
+    -- Recuperação de senha
+    reset_token VARCHAR(255) NULL,
+    reset_token_expiry DATETIME NULL,
+
+    -- Índices para busca dos tokens
+    INDEX idx_usuario_auth_token (auth_token),
+    INDEX idx_usuario_reset_token (reset_token),
+
+    -- Chaves estrangeiras
+    FOREIGN KEY (organizacao_id)
+        REFERENCES organizacao(id),
+
+    FOREIGN KEY (perfil_id)
+        REFERENCES perfil(id)
+);
 
     -- =========================================================
     -- CLIENTE
