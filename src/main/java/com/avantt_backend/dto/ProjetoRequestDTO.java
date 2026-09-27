@@ -35,6 +35,12 @@ public class ProjetoRequestDTO {
     private ProjectTasksDTO tasks;
 
     private List<Integer> team;
+    private List<Integer> addTeam;
+    private List<Integer> removeTeam;
+
+    // relacionamentos
+    private Integer clienteId;
+    private Integer organizacaoId;
 
     public ProjetoRequestDTO() {}
 
@@ -68,6 +74,18 @@ public class ProjetoRequestDTO {
 
     public List<Integer> getTeam() { return team; }
     public void setTeam(List<Integer> team) { this.team = team; }
+
+    public List<Integer> getAddTeam() { return addTeam; }
+    public void setAddTeam(List<Integer> addTeam) { this.addTeam = addTeam; }
+
+    public List<Integer> getRemoveTeam() { return removeTeam; }
+    public void setRemoveTeam(List<Integer> removeTeam) { this.removeTeam = removeTeam; }
+
+    public Integer getClienteId() { return clienteId; }
+    public void setClienteId(Integer clienteId) { this.clienteId = clienteId; }
+
+    public Integer getOrganizacaoId() { return organizacaoId; }
+    public void setOrganizacaoId(Integer organizacaoId) { this.organizacaoId = organizacaoId; }
 
 
 }

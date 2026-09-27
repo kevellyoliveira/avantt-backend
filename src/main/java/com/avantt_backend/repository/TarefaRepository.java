@@ -20,4 +20,7 @@ public interface TarefaRepository extends JpaRepository<Tarefa, Integer> {
 
     @org.springframework.data.jpa.repository.Query(value = "SELECT COUNT(*) FROM tarefa t WHERE t.sprint_id = :sprintId AND t.atribuido_para = :usuarioId", nativeQuery = true)
     int countBySprintIdAndAssignee(@org.springframework.data.repository.query.Param("sprintId") Integer sprintId, @org.springframework.data.repository.query.Param("usuarioId") Integer usuarioId);
+
+    @org.springframework.data.jpa.repository.Query(value = "SELECT COUNT(*) FROM tarefa t WHERE t.projeto_id = :projetoId AND t.atribuido_para = :usuarioId", nativeQuery = true)
+    int countByProjetoIdAndAssignee(@org.springframework.data.repository.query.Param("projetoId") Integer projetoId, @org.springframework.data.repository.query.Param("usuarioId") Integer usuarioId);
 }

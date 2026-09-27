@@ -55,19 +55,19 @@ public class TarefaService {
         // basic field validations (not null/blank) are handled by DTO annotations
         // resolve project by id
         var projOpt = projetoRepository.findById(dto.getProjectId());
-        if (projOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Projeto não encontrado: id=" + dto.getProjectId());
+        if (projOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + dto.getProjectId());
         var proj = projOpt.get();
 
         // resolve sprint by id
         var sprintOpt = sprintRepository.findById(dto.getSprintId());
-        if (sprintOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Sprint não encontrada: id=" + dto.getSprintId());
+        if (sprintOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Sprint não encontrada: id=" + dto.getSprintId());
         var sprint = sprintOpt.get();
 
         // resolve assignee by id if provided; ensure the user is member of the sprint
         Integer assigneeId = null;
         if (dto.getAssigneeId() != null) {
             var userOpt = usuarioRepository.findById(dto.getAssigneeId());
-            if (userOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Usuário não encontrado: id=" + dto.getAssigneeId());
+            if (userOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Usuário não encontrado: id=" + dto.getAssigneeId());
             assigneeId = dto.getAssigneeId();
         }
         final Integer resolvedAssigneeId = assigneeId;
@@ -88,12 +88,12 @@ public class TarefaService {
             // ensure user is member of the sprint
             Integer sprintId = sprint.getId();
             boolean memberSprint = sprintUsuarioRepository.findByIdSprintId(sprintId).stream().anyMatch(su -> su.getId().getUsuarioId().equals(resolvedAssigneeId));
-            if (!memberSprint) throw new com.avantt_backend.exception.ApiException("Usuário não está associado à sprint");
+            if (!memberSprint) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário não está associado à sprint");
 
             // ensure user is member of the project
             Integer projetoId = proj.getId();
             boolean memberProject = projetoUsuarioRepository.findByIdProjetoId(projetoId).stream().anyMatch(pu -> pu.getId().getUsuarioId().equals(resolvedAssigneeId));
-            if (!memberProject) throw new com.avantt_backend.exception.ApiException("Usuário não está associado ao projeto");
+            if (!memberProject) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário não está associado ao projeto");
 
             t.setAssignee(resolvedAssigneeId);
         } else {
@@ -107,7 +107,7 @@ public class TarefaService {
         String priority = null;
         if (dto.getPrioridadeId() != null) {
             var pOpt = prioridadeRepository.findById(dto.getPrioridadeId());
-            if (pOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Prioridade não encontrada: id=" + dto.getPrioridadeId());
+            if (pOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Prioridade não encontrada: id=" + dto.getPrioridadeId());
             t.setPrioridadeId(dto.getPrioridadeId());
             priority = StatusUtils.normalizePriority(pOpt.get().getNome());
         } else {
@@ -118,7 +118,7 @@ public class TarefaService {
 
         // require statusId and resolve name (dto validation ensures not null)
         var stOpt = statusTarefaRepository.findById(dto.getStatusId());
-        if (stOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Status não encontrado: id=" + dto.getStatusId());
+        if (stOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Status não encontrado: id=" + dto.getStatusId());
         t.setStatusId(dto.getStatusId());
         // store normalized status string as before
         String statusNorm = StatusUtils.normalizeTaskStatus(stOpt.get().getNome());
@@ -184,7 +184,7 @@ public class TarefaService {
     @Transactional
     public TarefaResponseDTO update(Integer tarefaId, TarefaRequestDTO dto) {
         var tOpt = tarefaRepository.findById(tarefaId);
-        if (tOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Tarefa não encontrada: id=" + tarefaId);
+        if (tOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Tarefa não encontrada: id=" + tarefaId);
         var t = tOpt.get();
 
         // title/nome
@@ -193,13 +193,13 @@ public class TarefaService {
         // resolve project and sprint if provided
         if (dto.getProjectId() != null) {
             var projOpt = projetoRepository.findById(dto.getProjectId());
-            if (projOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Projeto não encontrado: id=" + dto.getProjectId());
+            if (projOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + dto.getProjectId());
             t.setProjetoId(projOpt.get().getId());
             t.setProject(projOpt.get().getName());
         }
         if (dto.getSprintId() != null) {
             var sprintOpt = sprintRepository.findById(dto.getSprintId());
-            if (sprintOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Sprint não encontrada: id=" + dto.getSprintId());
+            if (sprintOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Sprint não encontrada: id=" + dto.getSprintId());
             t.setSprintId(sprintOpt.get().getId());
             t.setSprint(sprintOpt.get().getNome());
         }
@@ -207,14 +207,14 @@ public class TarefaService {
         // assignee resolution: if provided, validate membership
         if (dto.getAssigneeId() != null) {
             var userOpt = usuarioRepository.findById(dto.getAssigneeId());
-            if (userOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Usuário não encontrado: id=" + dto.getAssigneeId());
+            if (userOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Usuário não encontrado: id=" + dto.getAssigneeId());
             Integer sprintId = t.getSprintId();
-            if (sprintId == null) throw new com.avantt_backend.exception.ApiException("Tarefa não está associada a uma sprint");
+        if (sprintId == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Tarefa não está associada a uma sprint");
             boolean memberSprint = sprintUsuarioRepository.findByIdSprintId(sprintId).stream().anyMatch(su -> su.getId().getUsuarioId().equals(dto.getAssigneeId()));
-            if (!memberSprint) throw new com.avantt_backend.exception.ApiException("Usuário não está associado à sprint");
+            if (!memberSprint) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário não está associado à sprint");
             Integer projetoId = t.getProjetoId();
             boolean memberProject = projetoUsuarioRepository.findByIdProjetoId(projetoId).stream().anyMatch(pu -> pu.getId().getUsuarioId().equals(dto.getAssigneeId()));
-            if (!memberProject) throw new com.avantt_backend.exception.ApiException("Usuário não está associado ao projeto");
+            if (!memberProject) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário não está associado ao projeto");
             t.setAssignee(dto.getAssigneeId());
         }
 
@@ -224,7 +224,7 @@ public class TarefaService {
         String priority = null;
         if (dto.getPrioridadeId() != null) {
             var pOpt = prioridadeRepository.findById(dto.getPrioridadeId());
-            if (pOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Prioridade não encontrada: id=" + dto.getPrioridadeId());
+            if (pOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Prioridade não encontrada: id=" + dto.getPrioridadeId());
             t.setPrioridadeId(dto.getPrioridadeId());
             priority = StatusUtils.normalizePriority(pOpt.get().getNome());
         } else {
@@ -235,7 +235,7 @@ public class TarefaService {
 
         if (dto.getStatusId() != null) {
             var stOpt = statusTarefaRepository.findById(dto.getStatusId());
-            if (stOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Status não encontrado: id=" + dto.getStatusId());
+            if (stOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Status não encontrado: id=" + dto.getStatusId());
             t.setStatusId(dto.getStatusId());
             String statusNorm = StatusUtils.normalizeTaskStatus(stOpt.get().getNome());
             t.setStatus(statusNorm == null ? t.getStatus() : statusNorm);
@@ -246,7 +246,7 @@ public class TarefaService {
         // plannedEnd: if provided, validate against sprint end date
         if (dto.getPlannedEnd() != null) {
             var sprintOpt = sprintRepository.findById(t.getSprintId());
-            if (sprintOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Sprint não encontrada: id=" + t.getSprintId());
+            if (sprintOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Sprint não encontrada: id=" + t.getSprintId());
             var sprint = sprintOpt.get();
             if (dto.getPlannedEnd().isAfter(sprint.getDataFim())) {
                 throw new ApiException("A data de entrega deve ser até a data de fim da sprint");
@@ -307,7 +307,7 @@ public class TarefaService {
     @Transactional
     public TarefaResponseDTO updatePriority(Integer tarefaId, Integer prioridadeId) {
         var tOpt = tarefaRepository.findById(tarefaId);
-        if (tOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Tarefa não encontrada: id=" + tarefaId);
+        if (tOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Tarefa não encontrada: id=" + tarefaId);
         var t = tOpt.get();
         if (prioridadeId == null) {
             // unset priority
@@ -315,7 +315,7 @@ public class TarefaService {
             t.setPriority("média");
         } else {
             var pOpt = prioridadeRepository.findById(prioridadeId);
-            if (pOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Prioridade não encontrada: id=" + prioridadeId);
+            if (pOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Prioridade não encontrada: id=" + prioridadeId);
             t.setPrioridadeId(prioridadeId);
             t.setPriority(StatusUtils.normalizePriority(pOpt.get().getNome()));
         }
@@ -392,7 +392,7 @@ public class TarefaService {
 
     public List<java.util.Map<String,Object>> listUsersForTask(Integer tarefaId) {
         var tOpt = tarefaRepository.findById(tarefaId);
-        if (tOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Tarefa não encontrada: id=" + tarefaId);
+        if (tOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Tarefa não encontrada: id=" + tarefaId);
         var t = tOpt.get();
         if (t.getSprintId() == null) return java.util.Collections.emptyList();
         var sus = sprintUsuarioRepository.findByIdSprintId(t.getSprintId());
@@ -413,7 +413,7 @@ public class TarefaService {
     @Transactional
     public TarefaResponseDTO updateAssignee(Integer tarefaId, Integer assigneeId) {
         var tOpt = tarefaRepository.findById(tarefaId);
-        if (tOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Tarefa não encontrada: id=" + tarefaId);
+        if (tOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Tarefa não encontrada: id=" + tarefaId);
         var t = tOpt.get();
 
         if (assigneeId == null) {
@@ -424,15 +424,15 @@ public class TarefaService {
         }
 
         var userOpt = usuarioRepository.findById(assigneeId);
-        if (userOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Usuário não encontrado: id=" + assigneeId);
+        if (userOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Usuário não encontrado: id=" + assigneeId);
 
-        if (t.getSprintId() == null) throw new com.avantt_backend.exception.ApiException("Tarefa não está associada a uma sprint");
+        if (t.getSprintId() == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Tarefa não está associada a uma sprint");
         boolean memberSprint = sprintUsuarioRepository.findByIdSprintId(t.getSprintId()).stream().anyMatch(su -> su.getId().getUsuarioId().equals(assigneeId));
-        if (!memberSprint) throw new com.avantt_backend.exception.ApiException("Usuário não está associado à sprint");
+        if (!memberSprint) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário não está associado à sprint");
 
-        if (t.getProjetoId() == null) throw new com.avantt_backend.exception.ApiException("Tarefa não está associada a um projeto");
+        if (t.getProjetoId() == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Tarefa não está associada a um projeto");
         boolean memberProject = projetoUsuarioRepository.findByIdProjetoId(t.getProjetoId()).stream().anyMatch(pu -> pu.getId().getUsuarioId().equals(assigneeId));
-        if (!memberProject) throw new com.avantt_backend.exception.ApiException("Usuário não está associado ao projeto");
+        if (!memberProject) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário não está associado ao projeto");
 
         t.setAssignee(assigneeId);
         Tarefa saved = tarefaRepository.save(t);

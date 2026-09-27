@@ -19,6 +19,9 @@ public class ProjetoResponseDTO {
     private SprintsDTO sprints;
     private ProjectTasksDTO tasks;
     private List<String> team;
+    private Integer clienteId;
+    private Integer organizacaoId;
+    private String organizacaoName;
 
     public ProjetoResponseDTO() {}
 
@@ -61,5 +64,14 @@ public class ProjetoResponseDTO {
 
     public List<String> getTeam() { return team; }
     public void setTeam(List<String> team) { this.team = team; }
+
+    public Integer getClienteId() { return clienteId; }
+    public void setClienteId(Integer clienteId) { this.clienteId = clienteId; }
+
+    public Integer getOrganizacaoId() { return organizacaoId; }
+    public void setOrganizacaoId(Integer organizacaoId) { this.organizacaoId = organizacaoId; }
+
+    public String getOrganizacaoName() { return organizacaoName; }
+    public void setOrganizacaoName(String organizacaoName) { this.organizacaoName = organizacaoName; }
 
 }

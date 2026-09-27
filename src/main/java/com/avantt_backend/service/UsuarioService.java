@@ -39,7 +39,7 @@ public class UsuarioService {
         entity.setEmail(dto.getEmail());
         entity.setCargo(dto.getRole());
         // perfilId existence is validated via ExistenceRepository; DTO validation ensures non-null
-        if (!existenceRepository.existsPerfilById(dto.getPerfilId())) throw new com.avantt_backend.exception.ResourceNotFoundException("Perfil não encontrado: id=" + dto.getPerfilId());
+        if (!existenceRepository.existsPerfilById(dto.getPerfilId())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Perfil não encontrado: id=" + dto.getPerfilId());
         entity.setPerfilId(dto.getPerfilId());
 
         // organizacaoId is optional

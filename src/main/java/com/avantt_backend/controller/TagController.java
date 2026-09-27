@@ -26,22 +26,14 @@ public class TagController {
 
     @GetMapping(path = "/tags", produces = "application/json")
     public ResponseEntity<?> listAll() {
-        try {
-            List<Tag> all = tagRepository.findAll();
-            return ResponseEntity.ok(all);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+        List<Tag> all = tagRepository.findAll();
+        return ResponseEntity.ok(all);
     }
 
     @GetMapping(path = TAREFAS + "/{tarefaId}/tags", produces = "application/json")
     public ResponseEntity<?> listByTarefa(@PathVariable Integer tarefaId) {
-        try {
-            var ttags = tarefaTagRepository.findByIdTarefaId(tarefaId);
-            var ids = ttags.stream().map(tt -> tt.getId().getTagId()).toList();
-            return ResponseEntity.ok(ids);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+        var ttags = tarefaTagRepository.findByIdTarefaId(tarefaId);
+        var ids = ttags.stream().map(tt -> tt.getId().getTagId()).toList();
+        return ResponseEntity.ok(ids);
     }
 }

@@ -10,8 +10,12 @@ CREATE TABLE IF NOT EXISTS organizacao (
 id INT AUTO_INCREMENT PRIMARY KEY,
 nome_fantasia VARCHAR(255) NOT NULL,
 cnpj VARCHAR(20) UNIQUE NOT NULL,
-email_contato VARCHAR(255)
+email_contato VARCHAR(255),
+is_ativo BOOLEAN DEFAULT TRUE,
+data_desativacao TIMESTAMP NULL
 );
+
+
 
 
 -- =========================================================
@@ -101,6 +105,7 @@ data_desativacao TIMESTAMP NULL
 CREATE TABLE IF NOT EXISTS projeto (
 id INT AUTO_INCREMENT PRIMARY KEY,
 cliente_id INT,
+organizacao_id INT,
 
 nome VARCHAR(255) NOT NULL,
 descricao TEXT,
@@ -114,9 +119,9 @@ status_id INT NULL,
 horas_estimadas DECIMAL(10,2) DEFAULT 0.00,
 
 cor VARCHAR(20),
-risco VARCHAR(255) NULL,
 
-FOREIGN KEY (cliente_id) REFERENCES cliente(id)
+FOREIGN KEY (cliente_id) REFERENCES cliente(id),
+FOREIGN KEY (organizacao_id) REFERENCES organizacao(id)
 );
 
 
@@ -379,20 +384,56 @@ data_desativacao
 
 
 INSERT IGNORE INTO projeto (
-cliente_id,
-nome,
-descricao,
-data_inicio,
-data_fim,
-status_id,
-horas_estimadas,
-cor,
-risco
+    cliente_id,
+    organizacao_id,
+    nome,
+    descricao,
+    data_inicio,
+    data_fim,
+    status_id,
+    horas_estimadas,
+    cor
 ) VALUES
-(1,'Portal Corporativo','Desenvolvimento de um novo portal corporativo para gerenciamento de clientes.','2026-07-01 09:00:00','2026-08-20 18:00:00',(SELECT id FROM `status` WHERE nome = 'Concluída'),320.00,'#FF5733',NULL),
-(1,'Aplicativo Mobile','Aplicativo mobile para acompanhamento de pedidos e notificações.','2026-07-15 09:00:00','2026-08-30 18:00:00',(SELECT id FROM `status` WHERE nome = 'Concluída'),280.00,'#3498DB',NULL),
-(2,'E-commerce Mercado Fácil','Desenvolvimento da plataforma de vendas online.','2026-06-10 09:00:00','2026-07-30 18:00:00',(SELECT id FROM `status` WHERE nome = 'Concluída'),400.00,'#2ECC71',NULL),
-(4,'Sistema de Gestão','Sistema interno para gerenciamento de tarefas e equipes.','2026-08-01 09:00:00','2026-09-15 18:00:00',(SELECT id FROM `status` WHERE nome = 'Em andamento'),360.00,'#9B59B6',NULL);
+(
+    1, 1,
+    'Portal Corporativo',
+    'Desenvolvimento de um novo portal corporativo para gerenciamento de clientes.',
+    '2026-07-01 09:00:00',
+    '2026-08-20 18:00:00',
+    (SELECT id FROM `status` WHERE nome = 'Concluída'),
+    320.00,
+    '#FF5733'
+),
+(
+    1, 1,
+    'Aplicativo Mobile',
+    'Aplicativo mobile para acompanhamento de pedidos e notificações.',
+    '2026-07-15 09:00:00',
+    '2026-08-30 18:00:00',
+    (SELECT id FROM `status` WHERE nome = 'Concluída'),
+    280.00,
+    '#3498DB'
+),
+(
+    2, 2,
+    'E-commerce Mercado Fácil',
+    'Desenvolvimento da plataforma de vendas online.',
+    '2026-06-10 09:00:00',
+    '2026-07-30 18:00:00',
+    (SELECT id FROM `status` WHERE nome = 'Concluída'),
+    400.00,
+    '#2ECC71'
+),
+(
+    4, 2,
+    'Sistema de Gestão',
+    'Sistema interno para gerenciamento de tarefas e equipes.',
+    '2026-08-01 09:00:00',
+    '2026-09-15 18:00:00',
+    (SELECT id FROM `status` WHERE nome = 'Em andamento'),
+    360.00,
+    '#9B59B6'
+);
 
 
 INSERT IGNORE INTO projeto_usuario (projeto_id, usuario_id, papel) VALUES

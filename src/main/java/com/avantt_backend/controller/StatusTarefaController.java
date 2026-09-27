@@ -26,11 +26,7 @@ public class StatusTarefaController {
 
     @GetMapping(produces = "application/json")
     public ResponseEntity<?> list() {
-        try {
-            List<Status> all = repo.findAll();
-            return ResponseEntity.ok(all);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+        List<Status> all = repo.findAll();
+        return ResponseEntity.ok(all);
     }
 }

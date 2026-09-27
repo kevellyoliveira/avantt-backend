@@ -55,7 +55,7 @@ public class SprintService {
     @Transactional
     public SprintResponseDTO update(Integer sprintId, SprintRequestDTO dto) {
         var spOpt = sprintRepository.findById(sprintId);
-        if (spOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Sprint não encontrada: id=" + sprintId);
+        if (spOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Sprint não encontrada: id=" + sprintId);
         var s = spOpt.get();
 
         // cannot change project
@@ -68,7 +68,7 @@ public class SprintService {
 
         // resolve project for date validations
         var projOpt = projetoRepository.findById(s.getProjetoId());
-        if (projOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Projeto não encontrado: id=" + s.getProjetoId());
+        if (projOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + s.getProjetoId());
         var projeto = projOpt.get();
 
         // dates: if provided, validate same rules as create
@@ -91,7 +91,7 @@ public class SprintService {
         // status update
         if (dto.getStatusId() != null) {
             var stOpt = statusTarefaRepository.findById(dto.getStatusId());
-            if (stOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Status não encontrado: id=" + dto.getStatusId());
+            if (stOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Status não encontrado: id=" + dto.getStatusId());
             s.setStatusId(dto.getStatusId());
         }
 
@@ -180,7 +180,7 @@ public class SprintService {
         // Find project by id (avoid ambiguous names) - DTO validation ensures projectId presence
         var projetoOpt = projetoRepository.findById(dto.getProjectId());
         if (projetoOpt.isEmpty())
-            throw new com.avantt_backend.exception.ResourceNotFoundException("Projeto não encontrado: id=" + dto.getProjectId());
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + dto.getProjectId());
         var projeto = projetoOpt.get();
 
         Sprint s = new Sprint();
@@ -213,7 +213,7 @@ public class SprintService {
         s.setDataFim(dto.getEndDate());
         // status resolution: dto validation ensures statusId not null
         var stOpt = statusTarefaRepository.findById(dto.getStatusId());
-        if (stOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Status não encontrado: id=" + dto.getStatusId());
+        if (stOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Status não encontrado: id=" + dto.getStatusId());
         s.setStatusId(dto.getStatusId());
 
         Sprint saved = sprintRepository.save(s);

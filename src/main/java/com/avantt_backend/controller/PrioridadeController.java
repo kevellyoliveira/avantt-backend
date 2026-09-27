@@ -23,11 +23,7 @@ public class PrioridadeController {
 
     @GetMapping(produces = "application/json")
     public ResponseEntity<?> list() {
-        try {
-            var all = service.listAll();
-            return ResponseEntity.ok(all);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+        var all = service.listAll();
+        return ResponseEntity.ok(all);
     }
 }
