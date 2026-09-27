@@ -367,7 +367,7 @@ organizacao_id
 ('Eduardo Ferreira','eduardo.ferreira@email.com',TRUE,1,'Tech Lead',NULL,2),
 ('Fernanda Alves','fernanda.alves@email.com',TRUE,2,'UX/UI Designer',NULL,2),
 ('Gabriel Rocha','gabriel.rocha@email.com',TRUE,2,'Desenvolvedor Full Stack',NULL,2),
-('Helena Costa','helena.costa@email.com',FALSE,2,'Analista de Negócios','2026-08-15 10:30:00',3);
+('Helena Costa','helena.costa@email.com',FALSE,2,'Analista de Negócios','2027-08-15 10:30:00',3);
 
 
 INSERT IGNORE INTO cliente (
@@ -380,7 +380,7 @@ data_desativacao
 ('Empresa Alpha Tecnologia','contato@alpha.com.br','(11) 99999-1111',TRUE,NULL),
 ('Mercado Fácil','contato@mercadofacil.com.br','(11) 98888-2222',TRUE,NULL),
 ('StartUp Solutions','contato@startupsolutions.com.br','(11) 97777-3333',TRUE,NULL),
-('Grupo Financeiro Brasil','contato@gfb.com.br','(11) 96666-4444',FALSE,'2026-07-20 15:00:00');
+('Grupo Financeiro Brasil','contato@gfb.com.br','(11) 96666-4444',FALSE,'2027-07-20 15:00:00');
 
 
 INSERT IGNORE INTO projeto (
@@ -398,8 +398,8 @@ INSERT IGNORE INTO projeto (
     1, 1,
     'Portal Corporativo',
     'Desenvolvimento de um novo portal corporativo para gerenciamento de clientes.',
-    '2026-07-01 09:00:00',
-    '2026-08-20 18:00:00',
+    '2027-07-01 09:00:00',
+    '2027-08-20 18:00:00',
     (SELECT id FROM `status` WHERE nome = 'Concluída'),
     320.00,
     '#FF5733'
@@ -408,8 +408,8 @@ INSERT IGNORE INTO projeto (
     1, 1,
     'Aplicativo Mobile',
     'Aplicativo mobile para acompanhamento de pedidos e notificações.',
-    '2026-07-15 09:00:00',
-    '2026-08-30 18:00:00',
+    '2027-07-15 09:00:00',
+    '2027-08-30 18:00:00',
     (SELECT id FROM `status` WHERE nome = 'Concluída'),
     280.00,
     '#3498DB'
@@ -418,8 +418,8 @@ INSERT IGNORE INTO projeto (
     2, 2,
     'E-commerce Mercado Fácil',
     'Desenvolvimento da plataforma de vendas online.',
-    '2026-06-10 09:00:00',
-    '2026-07-30 18:00:00',
+    '2027-06-10 09:00:00',
+    '2027-07-30 18:00:00',
     (SELECT id FROM `status` WHERE nome = 'Concluída'),
     400.00,
     '#2ECC71'
@@ -428,8 +428,8 @@ INSERT IGNORE INTO projeto (
     4, 2,
     'Sistema de Gestão',
     'Sistema interno para gerenciamento de tarefas e equipes.',
-    '2026-08-01 09:00:00',
-    '2026-09-15 18:00:00',
+    '2027-08-01 09:00:00',
+    '2027-09-15 18:00:00',
     (SELECT id FROM `status` WHERE nome = 'Em andamento'),
     360.00,
     '#9B59B6'
@@ -456,16 +456,16 @@ INSERT IGNORE INTO projeto_usuario (projeto_id, usuario_id, papel) VALUES
 
 
 INSERT IGNORE INTO sprint (projeto_id, nome, data_inicio, data_fim, status_id) VALUES
-(1, 'Sprint 01 - Estrutura', '2026-07-01 09:00:00', '2026-07-14 18:00:00', (SELECT id FROM `status` WHERE nome = 'Finalizada')),
-(1, 'Sprint 02 - Funcionalidades', '2026-07-15 09:00:00', '2026-07-28 18:00:00', (SELECT id FROM `status` WHERE nome = 'Finalizada')),
-(1, 'Sprint 03 - Melhorias', '2026-07-29 09:00:00', '2026-08-12 18:00:00', (SELECT id FROM `status` WHERE nome = 'Em andamento')),
-(2, 'Sprint 01 - Mobile', '2026-07-15 09:00:00', '2026-07-29 18:00:00', (SELECT id FROM `status` WHERE nome = 'Finalizada')),
-(2, 'Sprint 02 - Integração', '2026-07-30 09:00:00', '2026-08-13 18:00:00', (SELECT id FROM `status` WHERE nome = 'Em andamento')),
-(3, 'Sprint 01 - E-commerce', '2026-06-10 09:00:00', '2026-06-24 18:00:00', (SELECT id FROM `status` WHERE nome = 'Finalizada')),
-(3, 'Sprint 02 - Checkout', '2026-06-25 09:00:00', '2026-07-09 18:00:00', (SELECT id FROM `status` WHERE nome = 'Finalizada')),
-(3, 'Sprint 03 - Pagamento', '2026-07-10 09:00:00', '2026-07-24 18:00:00', (SELECT id FROM `status` WHERE nome = 'Finalizada')),
-(4, 'Sprint 01 - MVP', '2026-08-01 09:00:00', '2026-08-15 18:00:00', (SELECT id FROM `status` WHERE nome = 'Finalizada')),
-(4, 'Sprint 02 - Relatórios', '2026-08-16 09:00:00', '2026-08-30 18:00:00', (SELECT id FROM `status` WHERE nome = 'Em andamento'));
+(1, 'Sprint 01 - Estrutura', '2027-07-01 09:00:00', '2027-07-16 18:00:00', (SELECT id FROM `status` WHERE nome = 'Concluída')),
+(1, 'Sprint 02 - Funcionalidades', '2027-07-17 09:00:00', '2027-08-01 18:00:00', (SELECT id FROM `status` WHERE nome = 'Concluída')),
+(1, 'Sprint 03 - Melhorias', '2027-08-02 09:00:00', '2027-08-17 18:00:00', (SELECT id FROM `status` WHERE nome = 'Em andamento')),
+(2, 'Sprint 01 - Mobile', '2027-07-15 09:00:00', '2027-07-30 18:00:00', (SELECT id FROM `status` WHERE nome = 'Concluída')),
+(2, 'Sprint 02 - Integração', '2027-07-31 09:00:00', '2027-08-15 18:00:00', (SELECT id FROM `status` WHERE nome = 'Em andamento')),
+(3, 'Sprint 01 - E-commerce', '2027-06-10 09:00:00', '2027-06-25 18:00:00', (SELECT id FROM `status` WHERE nome = 'Concluída')),
+(3, 'Sprint 02 - Checkout', '2027-06-26 09:00:00', '2027-07-11 18:00:00', (SELECT id FROM `status` WHERE nome = 'Concluída')),
+(3, 'Sprint 03 - Pagamento', '2027-07-12 09:00:00', '2027-07-27 18:00:00', (SELECT id FROM `status` WHERE nome = 'Concluída')),
+(4, 'Sprint 01 - MVP', '2027-08-01 09:00:00', '2027-08-16 18:00:00', (SELECT id FROM `status` WHERE nome = 'Concluída')),
+(4, 'Sprint 02 - Relatórios', '2027-08-17 09:00:00', '2027-09-01 18:00:00', (SELECT id FROM `status` WHERE nome = 'Em andamento'));
 
 -- populate sprint_usuario by associating each sprint with its project members
 INSERT INTO sprint_usuario (sprint_id, usuario_id, papel)
@@ -479,10 +479,10 @@ ALTER TABLE sprint ADD CONSTRAINT fk_sprint_status FOREIGN KEY (status_id) REFER
 
 
 INSERT IGNORE INTO cronograma (projeto_id, data_inicio, data_fim) VALUES
-(1, '2026-07-01 09:00:00', '2026-08-20 18:00:00'),
-(2, '2026-07-15 09:00:00', '2026-08-30 18:00:00'),
-(3, '2026-06-10 09:00:00', '2026-07-30 18:00:00'),
-(4, '2026-08-01 09:00:00', '2026-09-15 18:00:00');
+(1, '2027-07-01 09:00:00', '2027-08-20 18:00:00'),
+(2, '2027-07-15 09:00:00', '2027-08-30 18:00:00'),
+(3, '2027-06-10 09:00:00', '2027-07-30 18:00:00'),
+(4, '2027-08-01 09:00:00', '2027-09-15 18:00:00');
 
 
 INSERT IGNORE INTO tag (nome) VALUES
@@ -508,28 +508,28 @@ status_id,
 prioridade_id,
 data_conclusao
 ) VALUES
-(1, 1, 3, 1, 2, 'Criar API de autenticação', 'Implementar autenticação utilizando JWT.', '2026-08-10 18:00:00', 8, 24.00, 3, 3, '2026-08-09 16:30:00'),
-(1, 1, 3, 1, 3, 'Criar tela de login', 'Desenvolver interface de login do portal.', '2026-08-11 18:00:00', 5, 16.00, 3, 2, '2026-08-10 14:20:00'),
-(1, 1, 3, 1, 4, 'Testar autenticação', 'Criar testes funcionais para o fluxo de login.', '2026-08-12 18:00:00', 3, 10.00, 2, 2, NULL),
-(1, 2, 3, 2, 2, 'Corrigir validação de senha', 'Corrigir regra de validação da senha no backend.', '2026-08-15 18:00:00', 3, 8.00, 1, 3, NULL),
-(1, 2, 3, 1, 3, 'Atualizar documentação da API', 'Documentar endpoints utilizando Swagger.', '2026-08-18 18:00:00', 2, 6.00, 1, 1, NULL),
-(2, 2, 5, 5, 7, 'Implementar notificações push', 'Criar serviço responsável pelo envio de notificações.', '2026-08-12 18:00:00', 8, 24.00, 2, 3, NULL),
-(2, 2, 5, 5, 6, 'Criar tela de pedidos', 'Criar tela para visualização dos pedidos do cliente.', '2026-08-15 18:00:00', 5, 16.00, 2, 2, NULL),
-(2, 2, 5, 5, 4, 'Testar fluxo de pedidos', 'Realizar testes no fluxo completo de pedidos.', '2026-08-18 18:00:00', 3, 10.00, 1, 2, NULL),
-(3, 3, 8, 1, 2, 'Criar integração com gateway', 'Integrar sistema com gateway de pagamento.', '2026-07-20 18:00:00', 8, 24.00, 3, 3, '2026-07-19 17:00:00'),
-(3, 3, 8, 1, 7, 'Implementar checkout', 'Desenvolver fluxo completo de checkout.', '2026-07-22 18:00:00', 13, 40.00, 3, 3, '2026-07-21 15:00:00'),
-(3, 3, 8, 1, 6, 'Melhorar layout do checkout', 'Ajustar experiência visual da página de checkout.', '2026-07-25 18:00:00', 5, 16.00, 3, 2, '2026-07-24 13:00:00'),
-(3, 3, 8, 2, 4, 'Testar pagamento', 'Validar pagamentos aprovados, recusados e expirados.', '2026-07-27 18:00:00', 5, 16.00, 2, 3, NULL),
-(4, 4, 10, 5, 3, 'Criar dashboard', 'Criar dashboard principal do sistema.', '2026-08-25 18:00:00', 8, 24.00, 2, 2, NULL),
-(4, 4, 10, 5, 7, 'Criar endpoint de relatórios', 'Criar endpoint REST para consulta de relatórios.', '2026-08-27 18:00:00', 5, 16.00, 2, 3, NULL),
-(4, 4, 10, 5, 4, 'Validar relatórios', 'Validar os dados apresentados nos relatórios.', '2026-08-29 18:00:00', 3, 10.00, 1, 2, NULL);
+(1, 1, 3, 1, 2, 'Criar API de autenticação', 'Implementar autenticação utilizando JWT.', '2027-08-10 18:00:00', 8, 24.00, 3, 3, '2027-08-09 16:30:00'),
+(1, 1, 3, 1, 3, 'Criar tela de login', 'Desenvolver interface de login do portal.', '2027-08-11 18:00:00', 5, 16.00, 3, 2, '2027-08-10 14:20:00'),
+(1, 1, 3, 1, 4, 'Testar autenticação', 'Criar testes funcionais para o fluxo de login.', '2027-08-12 18:00:00', 3, 10.00, 2, 2, NULL),
+(1, 2, 3, 2, 2, 'Corrigir validação de senha', 'Corrigir regra de validação da senha no backend.', '2027-08-15 18:00:00', 3, 8.00, 1, 3, NULL),
+(1, 2, 3, 1, 3, 'Atualizar documentação da API', 'Documentar endpoints utilizando Swagger.', '2027-08-17 18:00:00', 2, 6.00, 1, 1, NULL),
+(2, 2, 5, 5, 7, 'Implementar notificações push', 'Criar serviço responsável pelo envio de notificações.', '2027-08-12 18:00:00', 8, 24.00, 2, 3, NULL),
+(2, 2, 5, 5, 6, 'Criar tela de pedidos', 'Criar tela para visualização dos pedidos do cliente.', '2027-08-15 18:00:00', 5, 16.00, 2, 2, NULL),
+(2, 2, 5, 5, 4, 'Testar fluxo de pedidos', 'Realizar testes no fluxo completo de pedidos.', '2027-08-15 18:00:00', 3, 10.00, 1, 2, NULL),
+(3, 3, 8, 1, 2, 'Criar integração com gateway', 'Integrar sistema com gateway de pagamento.', '2027-07-20 18:00:00', 8, 24.00, 3, 3, '2027-07-19 17:00:00'),
+(3, 3, 8, 1, 7, 'Implementar checkout', 'Desenvolver fluxo completo de checkout.', '2027-07-22 18:00:00', 13, 40.00, 3, 3, '2027-07-21 15:00:00'),
+(3, 3, 8, 1, 6, 'Melhorar layout do checkout', 'Ajustar experiência visual da página de checkout.', '2027-07-25 18:00:00', 5, 16.00, 3, 2, '2027-07-24 13:00:00'),
+(3, 3, 8, 2, 4, 'Testar pagamento', 'Validar pagamentos aprovados, recusados e expirados.', '2027-07-27 18:00:00', 5, 16.00, 2, 3, NULL),
+(4, 4, 10, 5, 3, 'Criar dashboard', 'Criar dashboard principal do sistema.', '2027-08-25 18:00:00', 8, 24.00, 2, 2, NULL),
+(4, 4, 10, 5, 7, 'Criar endpoint de relatórios', 'Criar endpoint REST para consulta de relatórios.', '2027-08-27 18:00:00', 5, 16.00, 2, 3, NULL),
+(4, 4, 10, 5, 4, 'Validar relatórios', 'Validar os dados apresentados nos relatórios.', '2027-08-29 18:00:00', 3, 10.00, 1, 2, NULL);
 
 
 -- previously subtasks are now inserted as normal tasks (no parent relation)
 INSERT IGNORE INTO tarefa (projeto_id, cronograma_id, sprint_id, criado_por, atribuido_para, nome, descricao, prazo, story_points, horas_estimadas, status_id, prioridade_id, data_conclusao) VALUES
-(1,1,3,2,2,'Criar entidade de usuário','Criar entidade User no backend.','2026-08-05 18:00:00',2,6.00,3,2,'2026-08-04 16:00:00'),
-(1,1,3,2,2,'Criar JWT Service','Implementar serviço responsável pela criação dos tokens.','2026-08-07 18:00:00',3,8.00,3,3,'2026-08-07 17:30:00'),
-(1,1,3,1,3,'Criar formulário de login','Criar formulário com email e senha.','2026-08-08 18:00:00',2,6.00,3,2,'2026-08-08 14:00:00');
+(1,1,3,2,2,'Criar entidade de usuário','Criar entidade User no backend.','2027-08-05 18:00:00',2,6.00,3,2,'2027-08-04 16:00:00'),
+(1,1,3,2,2,'Criar JWT Service','Implementar serviço responsável pela criação dos tokens.','2027-08-07 18:00:00',3,8.00,3,3,'2027-08-07 17:30:00'),
+(1,1,3,1,3,'Criar formulário de login','Criar formulário com email e senha.','2027-08-08 18:00:00',2,6.00,3,2,'2027-08-08 14:00:00');
 
 
 INSERT IGNORE INTO tarefa_tag (tarefa_id, tag_id) VALUES
