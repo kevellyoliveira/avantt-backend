@@ -1,6 +1,6 @@
 package com.avantt_backend.controller;
 
-import com.avantt_backend.entity.StatusTarefa;
+import com.avantt_backend.entity.Status;
 import com.avantt_backend.repository.StatusTarefaRepository;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +27,7 @@ public class StatusTarefaController {
     @GetMapping(produces = "application/json")
     public ResponseEntity<?> list() {
         try {
-            List<StatusTarefa> all = repo.findAll();
+            List<Status> all = repo.findAll();
             return ResponseEntity.ok(all);
         } catch (Exception e) {
             return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);

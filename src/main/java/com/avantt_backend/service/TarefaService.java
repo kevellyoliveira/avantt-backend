@@ -11,16 +11,14 @@ import com.avantt_backend.repository.UsuarioRepository;
 import com.avantt_backend.repository.PrioridadeRepository;
 import com.avantt_backend.repository.StatusTarefaRepository;
 import com.avantt_backend.entity.Usuario;
-import com.avantt_backend.entity.Tag;
 import com.avantt_backend.entity.Prioridade;
-import com.avantt_backend.entity.StatusTarefa;
+import com.avantt_backend.entity.Status;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.avantt_backend.util.StatusUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -229,7 +227,7 @@ public class TarefaService {
                     .filter(t -> {
                         String taskStatus = t.getStatus();
                         if ((taskStatus == null || taskStatus.isBlank()) && t.getStatusId() != null) {
-                            taskStatus = statusTarefaRepository.findById(t.getStatusId()).map(StatusTarefa::getNome).orElse(null);
+                            taskStatus = statusTarefaRepository.findById(t.getStatusId()).map(Status::getNome).orElse(null);
                         }
                         String taskNorm = StatusUtils.normalizeTaskStatus(taskStatus);
                         return normFilter != null && normFilter.equals(taskNorm);
@@ -347,7 +345,7 @@ public class TarefaService {
         r.setStatusId(t.getStatusId());
         String statusVal = t.getStatus();
         if ((statusVal == null || statusVal.isBlank()) && t.getStatusId() != null) {
-            statusVal = statusTarefaRepository.findById(t.getStatusId()).map(StatusTarefa::getNome).orElse(null);
+            statusVal = statusTarefaRepository.findById(t.getStatusId()).map(Status::getNome).orElse(null);
         }
         r.setStatusName(statusVal);
         String normStatus = StatusUtils.normalizeTaskStatus(statusVal);
