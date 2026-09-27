@@ -23,6 +23,7 @@ public class TarefaResponseDTO {
 
     private Integer estimatedHours;
     private String blockedBy;
+    private String description;
     private List<Integer> tagIds;
 
     public TarefaResponseDTO() {}
@@ -72,6 +73,9 @@ public class TarefaResponseDTO {
 
     public String getBlockedBy() { return blockedBy; }
     public void setBlockedBy(String blockedBy) { this.blockedBy = blockedBy; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
     public List<Integer> getTagIds() { return tagIds; }
     public void setTagIds(List<Integer> tagIds) { this.tagIds = tagIds; }

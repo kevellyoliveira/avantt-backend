@@ -54,6 +54,9 @@ public class Tarefa {
     @Column(columnDefinition = "TEXT")
     private String tags; // JSON array
 
+    @Column(name = "descricao", columnDefinition = "TEXT")
+    private String descricao;
+
     public Tarefa() {}
 
     // getters and setters
@@ -113,4 +116,7 @@ public class Tarefa {
 
     public String getTags() { return tags; }
     public void setTags(String tags) { this.tags = tags; }
+
+    public String getDescricao() { return descricao; }
+    public void setDescricao(String descricao) { this.descricao = descricao; }
 }

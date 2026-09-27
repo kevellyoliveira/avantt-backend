@@ -99,4 +99,39 @@ public class TarefaController {
             return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
         }
     }
+
+    @Operation(summary = "Atualizar tarefa", description = "Atualiza todos os campos de uma tarefa existente. Regras de validação iguais à criação.")
+    @PutMapping(path = "/{id}", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<?> updateTask(
+            @Parameter(description = "ID da tarefa a ser atualizada", required = true)
+            @PathVariable Integer id,
+            @RequestBody TarefaRequestDTO request) {
+        try {
+            var updated = tarefaService.update(id, request);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (com.avantt_backend.exception.ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (com.avantt_backend.exception.ApiException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
+        }
+    }
+
+    @PatchMapping(path = "/{id}/prioridade", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<?> patchPriority(@PathVariable Integer id, @RequestBody java.util.Map<String, Integer> body) {
+        try {
+            Integer prioridadeId = body.get("prioridadeId");
+            var updated = tarefaService.updatePriority(id, prioridadeId);
+            return ResponseEntity.ok(updated);
+        } catch (com.avantt_backend.exception.ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (com.avantt_backend.exception.ApiException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
+        }
+    }
 }

@@ -194,9 +194,10 @@
     );
 
     INSERT IGNORE INTO prioridade (nome) VALUES
-    ('Baixa'),
-    ('Média'),
-    ('Alta');
+   ('Baixa'),
+   ('Média'),
+   ('Alta'),
+   ('Crítica');
 
 
     -- =========================================================

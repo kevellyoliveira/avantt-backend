@@ -106,7 +106,16 @@ public class TarefaService {
         t.setAvatar(dto.getAvatar() == null ? "" : dto.getAvatar());
         t.setAvatarColor(dto.getAvatarColor() == null ? "" : dto.getAvatarColor());
 
-        String priority = StatusUtils.normalizePriority(dto.getPriority());
+        // resolve priority: prefer explicit prioridadeId when provided, otherwise normalize string
+        String priority = null;
+        if (dto.getPrioridadeId() != null) {
+            var pOpt = prioridadeRepository.findById(dto.getPrioridadeId());
+            if (pOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Prioridade não encontrada: id=" + dto.getPrioridadeId());
+            t.setPrioridadeId(dto.getPrioridadeId());
+            priority = StatusUtils.normalizePriority(pOpt.get().getNome());
+        } else {
+            priority = StatusUtils.normalizePriority(dto.getPriority());
+        }
         if (priority == null) priority = "média";
         t.setPriority(priority);
 
@@ -131,6 +140,7 @@ public class TarefaService {
 
         t.setEstimatedHours(dto.getEstimatedHours() == null ? 0 : dto.getEstimatedHours());
         t.setBlockedBy(dto.getBlockedBy());
+        t.setDescricao(dto.getDescription() == null ? null : dto.getDescription());
         Tarefa saved = tarefaRepository.save(t);
 
         // persist tag relations: delete existing and insert provided tag ids
@@ -171,7 +181,150 @@ public class TarefaService {
             var ids = ttags.stream().map(tt -> tt.getId().getTagId()).toList();
             r.setTagIds(ids);
         } catch (Exception e) { r.setTagIds(java.util.Collections.emptyList()); }
+        r.setDescription(saved.getDescricao());
         return r;
+    }
+
+    @Transactional
+    public TarefaResponseDTO update(Integer tarefaId, TarefaRequestDTO dto) {
+        var tOpt = tarefaRepository.findById(tarefaId);
+        if (tOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Tarefa não encontrada: id=" + tarefaId);
+        var t = tOpt.get();
+
+        // title/nome
+        if (dto.getTitle() != null && !dto.getTitle().isBlank()) t.setNome(dto.getTitle());
+
+        // resolve project and sprint if provided
+        if (dto.getProjectId() != null) {
+            var projOpt = projetoRepository.findById(dto.getProjectId());
+            if (projOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Projeto não encontrado: id=" + dto.getProjectId());
+            t.setProjetoId(projOpt.get().getId());
+            t.setProject(projOpt.get().getName());
+        }
+        if (dto.getSprintId() != null) {
+            var sprintOpt = sprintRepository.findById(dto.getSprintId());
+            if (sprintOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Sprint não encontrada: id=" + dto.getSprintId());
+            t.setSprintId(sprintOpt.get().getId());
+            t.setSprint(sprintOpt.get().getNome());
+        }
+
+        // assignee resolution: if provided, validate membership
+        if (dto.getAssigneeId() != null) {
+            var userOpt = usuarioRepository.findById(dto.getAssigneeId());
+            if (userOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Usuário não encontrado: id=" + dto.getAssigneeId());
+            Integer sprintId = t.getSprintId();
+            if (sprintId == null) throw new com.avantt_backend.exception.ApiException("Tarefa não está associada a uma sprint");
+            boolean memberSprint = sprintUsuarioRepository.findByIdSprintId(sprintId).stream().anyMatch(su -> su.getId().getUsuarioId().equals(dto.getAssigneeId()));
+            if (!memberSprint) throw new com.avantt_backend.exception.ApiException("Usuário não está associado à sprint");
+            Integer projetoId = t.getProjetoId();
+            boolean memberProject = projetoUsuarioRepository.findByIdProjetoId(projetoId).stream().anyMatch(pu -> pu.getId().getUsuarioId().equals(dto.getAssigneeId()));
+            if (!memberProject) throw new com.avantt_backend.exception.ApiException("Usuário não está associado ao projeto");
+            t.setAssignee(dto.getAssigneeId());
+        }
+
+        t.setAvatar(dto.getAvatar() == null ? t.getAvatar() : dto.getAvatar());
+        t.setAvatarColor(dto.getAvatarColor() == null ? t.getAvatarColor() : dto.getAvatarColor());
+
+        String priority = null;
+        if (dto.getPrioridadeId() != null) {
+            var pOpt = prioridadeRepository.findById(dto.getPrioridadeId());
+            if (pOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Prioridade não encontrada: id=" + dto.getPrioridadeId());
+            t.setPrioridadeId(dto.getPrioridadeId());
+            priority = StatusUtils.normalizePriority(pOpt.get().getNome());
+        } else {
+            priority = StatusUtils.normalizePriority(dto.getPriority());
+            if (priority == null) priority = t.getPriority();
+        }
+        t.setPriority(priority);
+
+        if (dto.getStatusId() != null) {
+            var stOpt = statusTarefaRepository.findById(dto.getStatusId());
+            if (stOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Status não encontrado: id=" + dto.getStatusId());
+            t.setStatusId(dto.getStatusId());
+            String statusNorm = StatusUtils.normalizeTaskStatus(stOpt.get().getNome());
+            t.setStatus(statusNorm == null ? t.getStatus() : statusNorm);
+        }
+
+        t.setDaysDelayed(dto.getDaysDelayed() == null ? (t.getDaysDelayed() == null ? 0 : t.getDaysDelayed()) : dto.getDaysDelayed());
+
+        // plannedEnd: if provided, validate against sprint end date
+        if (dto.getPlannedEnd() != null) {
+            var sprintOpt = sprintRepository.findById(t.getSprintId());
+            if (sprintOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Sprint não encontrada: id=" + t.getSprintId());
+            var sprint = sprintOpt.get();
+            if (dto.getPlannedEnd().isAfter(sprint.getDataFim())) {
+                throw new ApiException("A data de entrega deve ser até a data de fim da sprint");
+            }
+            t.setPlannedEnd(dto.getPlannedEnd());
+        }
+
+        t.setEstimatedHours(dto.getEstimatedHours() == null ? t.getEstimatedHours() : dto.getEstimatedHours());
+        t.setBlockedBy(dto.getBlockedBy() == null ? t.getBlockedBy() : dto.getBlockedBy());
+
+        // description
+        if (dto.getDescription() != null) {
+            if (dto.getDescription().length() > 1000) throw new ApiException("Descrição deve ter no máximo 1000 caracteres");
+            t.setDescricao(dto.getDescription());
+        }
+
+        Tarefa saved = tarefaRepository.save(t);
+
+        // tags: replace existing with provided
+        try {
+            tarefaTagRepository.deleteByIdTarefaId(saved.getId());
+            if (dto.getTagIds() != null) {
+                for (Integer tagId : dto.getTagIds()) {
+                    if (tagId == null) continue;
+                    if (tagRepository.findById(tagId).isEmpty()) throw new ApiException("Tag não encontrada: id=" + tagId);
+                    com.avantt_backend.entity.TarefaTag tt = new com.avantt_backend.entity.TarefaTag(saved.getId(), tagId);
+                    tarefaTagRepository.save(tt);
+                }
+            }
+        } catch (Exception e) { throw new RuntimeException(e); }
+
+        // build response
+        TarefaResponseDTO r = new TarefaResponseDTO();
+        r.setId(saved.getId() == null ? null : String.valueOf(saved.getId()));
+        r.setTitle(saved.getNome() == null ? saved.getTitulo() : saved.getNome());
+        r.setProject(saved.getProject() == null ? projetoRepository.findById(saved.getProjetoId()).map(com.avantt_backend.entity.Projeto::getName).orElse("") : saved.getProject());
+        r.setSprint(saved.getSprint() == null ? sprintRepository.findById(saved.getSprintId()).map(com.avantt_backend.entity.Sprint::getNome).orElse("") : saved.getSprint());
+        if (saved.getAssignee() == null) r.setAssignee(""); else r.setAssignee(usuarioRepository.findById(saved.getAssignee()).map(Usuario::getNome).orElse(""));
+        r.setAvatar(saved.getAvatar());
+        r.setAvatarColor(saved.getAvatarColor());
+        r.setPriority(saved.getPriority());
+        r.setStatus(saved.getStatus());
+        r.setStatusId(saved.getStatusId());
+        r.setStatusName(statusTarefaRepository.findById(saved.getStatusId()).map(com.avantt_backend.entity.Status::getNome).orElse(null));
+        r.setDaysDelayed(saved.getDaysDelayed() == null ? 0 : saved.getDaysDelayed());
+        r.setPlannedEnd(saved.getPlannedEnd());
+        r.setEstimatedHours(saved.getEstimatedHours() == null ? 0 : saved.getEstimatedHours());
+        r.setBlockedBy(saved.getBlockedBy());
+        try {
+            var ttags = tarefaTagRepository.findByIdTarefaId(saved.getId());
+            var ids = ttags.stream().map(tt -> tt.getId().getTagId()).toList();
+            r.setTagIds(ids);
+        } catch (Exception e) { r.setTagIds(java.util.Collections.emptyList()); }
+        r.setDescription(saved.getDescricao());
+        return r;
+    }
+
+    @Transactional
+    public TarefaResponseDTO updatePriority(Integer tarefaId, Integer prioridadeId) {
+        var tOpt = tarefaRepository.findById(tarefaId);
+        if (tOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Tarefa não encontrada: id=" + tarefaId);
+        var t = tOpt.get();
+        if (prioridadeId == null) {
+            // unset priority
+            t.setPrioridadeId(null);
+            t.setPriority("média");
+        } else {
+            var pOpt = prioridadeRepository.findById(prioridadeId);
+            if (pOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Prioridade não encontrada: id=" + prioridadeId);
+            t.setPrioridadeId(prioridadeId);
+            t.setPriority(StatusUtils.normalizePriority(pOpt.get().getNome()));
+        }
+        Tarefa saved = tarefaRepository.save(t);
+        return toResponse(saved);
     }
 
     public List<TarefaResponseDTO> listAll(String projetoId, String sprintId, String status) {

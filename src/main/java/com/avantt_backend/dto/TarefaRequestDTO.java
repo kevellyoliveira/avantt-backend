@@ -3,6 +3,7 @@ package com.avantt_backend.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -25,6 +26,7 @@ public class TarefaRequestDTO {
     private String avatarColor;
     private String priority;
     private Integer statusId;
+    private Integer prioridadeId;
     private Integer daysDelayed;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
@@ -35,6 +37,8 @@ public class TarefaRequestDTO {
     private Integer estimatedHours;
     private String blockedBy;
     private List<Integer> tagIds;
+    @Size(max = 1000, message = "Descrição deve ter no máximo 1000 caracteres")
+    private String description;
 
     public TarefaRequestDTO() {}
 
@@ -62,6 +66,9 @@ public class TarefaRequestDTO {
     public Integer getStatusId() { return statusId; }
     public void setStatusId(Integer statusId) { this.statusId = statusId; }
 
+    public Integer getPrioridadeId() { return prioridadeId; }
+    public void setPrioridadeId(Integer prioridadeId) { this.prioridadeId = prioridadeId; }
+
     public Integer getDaysDelayed() { return daysDelayed; }
     public void setDaysDelayed(Integer daysDelayed) { this.daysDelayed = daysDelayed; }
 
@@ -76,4 +83,7 @@ public class TarefaRequestDTO {
 
     public List<Integer> getTagIds() { return tagIds; }
     public void setTagIds(List<Integer> tagIds) { this.tagIds = tagIds; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 }
