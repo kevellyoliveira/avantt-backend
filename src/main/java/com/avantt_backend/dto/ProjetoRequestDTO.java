@@ -15,7 +15,7 @@ public class ProjetoRequestDTO {
 
     private String color;
 
-    private String status;
+    private Integer statusId;
 
     @NotNull(message = "Data de início é obrigatória")
     @JsonFormat(pattern = "yyyy-MM-dd")
@@ -33,7 +33,7 @@ public class ProjetoRequestDTO {
 
     private ProjectTasksDTO tasks;
 
-    private List<String> team;
+    private List<Integer> team;
 
     public ProjetoRequestDTO() {}
 
@@ -47,8 +47,8 @@ public class ProjetoRequestDTO {
     public String getColor() { return color; }
     public void setColor(String color) { this.color = color; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public Integer getStatusId() { return statusId; }
+    public void setStatusId(Integer statusId) { this.statusId = statusId; }
 
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
@@ -65,8 +65,8 @@ public class ProjetoRequestDTO {
     public ProjectTasksDTO getTasks() { return tasks; }
     public void setTasks(ProjectTasksDTO tasks) { this.tasks = tasks; }
 
-    public List<String> getTeam() { return team; }
-    public void setTeam(List<String> team) { this.team = team; }
+    public List<Integer> getTeam() { return team; }
+    public void setTeam(List<Integer> team) { this.team = team; }
 
 
 }

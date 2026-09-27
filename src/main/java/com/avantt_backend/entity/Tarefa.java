@@ -26,7 +26,8 @@ public class Tarefa {
 
     private String sprint;
 
-    private String assignee;
+    @Column(name = "atribuido_para")
+    private Integer assignee;
 
     private String avatar;
 
@@ -41,9 +42,6 @@ public class Tarefa {
 
     @Column(name = "status_id")
     private Integer statusId;
-
-    @Column(name = "atribuido_para")
-    private Integer atribuidoPara;
 
     private Integer daysDelayed;
 
@@ -80,11 +78,8 @@ public class Tarefa {
     public Integer getSprintId() { return sprintId; }
     public void setSprintId(Integer sprintId) { this.sprintId = sprintId; }
 
-    public String getAssignee() { return assignee; }
-    public void setAssignee(String assignee) { this.assignee = assignee; }
-
-    public Integer getAtribuidoPara() { return atribuidoPara; }
-    public void setAtribuidoPara(Integer atribuidoPara) { this.atribuidoPara = atribuidoPara; }
+    public Integer getAssignee() { return assignee; }
+    public void setAssignee(Integer assignee) { this.assignee = assignee; }
 
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }

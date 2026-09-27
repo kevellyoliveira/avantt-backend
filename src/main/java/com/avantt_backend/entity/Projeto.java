@@ -24,9 +24,9 @@ public class Projeto {
     @Column(name = "cor", length = 20)
     private String color;
 
-    // maps to projeto.status
-    @Column(name = "status", length = 50)
-    private String status;
+    // maps to projeto.status_id
+    @Column(name = "status_id")
+    private Integer statusId;
 
     // maps to projeto.data_inicio
     @Column(name = "data_inicio")
@@ -55,8 +55,8 @@ public class Projeto {
     public String getColor() { return color; }
     public void setColor(String color) { this.color = color; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public Integer getStatusId() { return statusId; }
+    public void setStatusId(Integer statusId) { this.statusId = statusId; }
 
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }

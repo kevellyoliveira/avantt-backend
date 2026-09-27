@@ -40,6 +40,9 @@ public class ProjetoController {
     @PostMapping(path = PROJETOS, consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> createProjeto(@Valid @RequestBody ProjetoRequestDTO request) {
         try {
+            if (request.getStatusId() == null) {
+                return ResponseEntity.status(400).body("O campo statusId é obrigatório.");
+            }
             var created = projetoService.create(request);
 
             if (created == null) {
@@ -50,6 +53,9 @@ public class ProjetoController {
 
         } catch (ApiException e) {
             return ResponseEntity.status(400).body(e.getMessage());
+
+        } catch (com.avantt_backend.exception.ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
 
         } catch (Exception e) {
             return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);

@@ -31,6 +31,16 @@ public class TarefaController {
             @Parameter(description = "Dados da tarefa a ser criada", required = true)
             @RequestBody TarefaRequestDTO request) {
         try {
+            if (request.getStatusId() == null) {
+                return ResponseEntity.status(400).body("O campo statusId é obrigatório.");
+            }
+            if (request.getProjectId() == null) {
+                return ResponseEntity.status(400).body("O campo projectId é obrigatório.");
+            }
+            if (request.getSprintId() == null) {
+                return ResponseEntity.status(400).body("O campo sprintId é obrigatório.");
+            }
+            // rename: accept assigneeId in request body
             var created = tarefaService.create(request);
             return ResponseEntity.status(201).body(created);
         } catch (IllegalArgumentException e) {
@@ -56,6 +66,33 @@ public class TarefaController {
             return ResponseEntity.ok(list);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(400).body(e.getMessage());
+        } catch (com.avantt_backend.exception.ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
+        }
+    }
+
+    @PatchMapping(path = "/{id}/assignee", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<?> patchAssignee(@PathVariable Integer id, @RequestBody java.util.Map<String, Integer> body) {
+        try {
+            Integer assigneeId = body.get("assigneeId");
+            var updated = tarefaService.updateAssignee(id, assigneeId);
+            return ResponseEntity.ok(updated);
+        } catch (com.avantt_backend.exception.ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (com.avantt_backend.exception.ApiException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
+        }
+    }
+
+    @GetMapping(path = "/{id}/usuarios", produces = "application/json")
+    public ResponseEntity<?> listUsersForTask(@PathVariable Integer id) {
+        try {
+            var list = tarefaService.listUsersForTask(id);
+            return ResponseEntity.ok(list);
         } catch (com.avantt_backend.exception.ResourceNotFoundException e) {
             return ResponseEntity.status(404).body(e.getMessage());
         } catch (Exception e) {

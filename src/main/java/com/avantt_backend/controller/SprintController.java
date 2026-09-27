@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+import com.avantt_backend.exception.ResourceNotFoundException;
 
 import java.util.List;
 
@@ -33,11 +34,22 @@ public class SprintController {
             @Parameter(description = "Dados da sprint a ser criada", required = true)
             @Valid @RequestBody SprintRequestDTO request) {
         try {
+            // require status id
+            if (request.getStatusId() == null) {
+                return ResponseEntity.status(400).body("O campo statusId é obrigatório.");
+            }
+            // require project id (use id to avoid ambiguity)
+            if (request.getProjectId() == null) {
+                return ResponseEntity.status(400).body("O campo projectId é obrigatório.");
+            }
+
             var created = sprintService.create(request);
             return ResponseEntity.status(201).body(created);
 
         } catch (ApiException e) {
             return ResponseEntity.status(400).body(e.getMessage());
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
 
         } catch (Exception e) {
             return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
@@ -53,6 +65,24 @@ public class SprintController {
             List<SprintResponseDTO> list = sprintService.listAll(projetoId);
             return ResponseEntity.ok(list);
 
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
+        }
+    }
+
+    @Operation(summary = "Atualizar sprint", description = "Atualiza dados da sprint: nome, datas e associação de membros (adicionar/remover).")
+    @PutMapping(path = "/{id}", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<?> updateSprint(
+            @Parameter(description = "ID da sprint a ser atualizada", required = true)
+            @PathVariable Integer id,
+            @Valid @RequestBody SprintRequestDTO request) {
+        try {
+            var updated = sprintService.update(id, request);
+            return ResponseEntity.ok(updated);
+        } catch (ApiException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
         }

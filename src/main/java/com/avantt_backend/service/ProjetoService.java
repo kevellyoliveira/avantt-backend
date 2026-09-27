@@ -27,6 +27,7 @@ public class ProjetoService {
     private final TarefaService tarefaService;
     private final SprintRepository sprintRepository;
     private final TarefaRepository tarefaRepository;
+    private final com.avantt_backend.repository.StatusTarefaRepository statusTarefaRepository;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -36,7 +37,8 @@ public class ProjetoService {
                           SprintService sprintService,
                           TarefaService tarefaService,
                           SprintRepository sprintRepository,
-                          TarefaRepository tarefaRepository) {
+                          TarefaRepository tarefaRepository,
+                          com.avantt_backend.repository.StatusTarefaRepository statusTarefaRepository) {
         this.projetoRepository = projetoRepository;
         this.usuarioRepository = usuarioRepository;
         this.projetoUsuarioRepository = projetoUsuarioRepository;
@@ -44,6 +46,7 @@ public class ProjetoService {
         this.tarefaService = tarefaService;
         this.sprintRepository = sprintRepository;
         this.tarefaRepository = tarefaRepository;
+        this.statusTarefaRepository = statusTarefaRepository;
     }
 
     @Transactional
@@ -52,7 +55,11 @@ public class ProjetoService {
         p.setName(dto.getName());
         p.setDescription(dto.getDescription());
         p.setColor(dto.getColor());
-        p.setStatus(StatusUtils.normalizeProjectStatus(dto.getStatus()));
+        // require statusId and persist id
+        if (dto.getStatusId() == null) throw new com.avantt_backend.exception.ApiException("O campo statusId é obrigatório");
+        var stOpt = statusTarefaRepository.findById(dto.getStatusId());
+        if (stOpt.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException("Status não encontrado: id=" + dto.getStatusId());
+        p.setStatusId(dto.getStatusId());
         p.setStartDate(dto.getStartDate());
         p.setProgress(dto.getProgress());
 
@@ -65,24 +72,12 @@ public class ProjetoService {
 
         Projeto saved = projetoRepository.save(p);
 
-        // associate team
+        // associate team (list of user IDs). Validate all ids exist; return error on invalid user
         if (dto.getTeam() != null) {
-            for (String member : dto.getTeam()) {
-                Integer usuarioId = null;
-                try {
-                    // try parse as id
-                    usuarioId = Integer.valueOf(member);
-                    if (!usuarioRepository.findById(usuarioId).isPresent()) {
-                        throw new ApiException("Usuario com id " + usuarioId + " não encontrado");
-                    }
-                } catch (NumberFormatException nfe) {
-                    // not an id, try find by name
-                    var opt = usuarioRepository.findByNomeIgnoreCase(member);
-                    if (opt.isPresent()) {
-                        usuarioId = opt.get().getId();
-                    } else {
-                        throw new ApiException("Usuario com nome '" + member + "' não encontrado");
-                    }
+            for (Integer usuarioId : dto.getTeam()) {
+                if (usuarioId == null) throw new ApiException("Usuário inválido na lista de team");
+                if (!usuarioRepository.findById(usuarioId).isPresent()) {
+                    throw new ApiException("Usuário não encontrado: id=" + usuarioId);
                 }
                 ProjetoUsuario pu = new ProjetoUsuario();
                 pu.setId(new ProjetoUsuarioId(saved.getId(), usuarioId));
@@ -105,7 +100,14 @@ public class ProjetoService {
         f.setName(p.getName());
         f.setDescription(p.getDescription());
         f.setColor(p.getColor());
-        f.setStatus(p.getStatus());
+        // set status normalized string for frontend based on statusId
+        if (p.getStatusId() != null) {
+            var st = statusTarefaRepository.findById(p.getStatusId());
+            if (st.isPresent()) f.setStatus(StatusUtils.normalizeProjectStatus(st.get().getNome()));
+            else f.setStatus(null);
+        } else {
+            f.setStatus(null);
+        }
         f.setStartDate(p.getStartDate());
         f.setEndDate(p.getEndDate());
         f.setProgress(p.getProgress() == null ? 0 : p.getProgress());
@@ -157,6 +159,11 @@ public class ProjetoService {
             f.setSprints(s);
             f.setTasks(t);
             f.setTeam(teamNames);
+            // set status id/name for the project based on stored status id
+            f.setStatusId(p.getStatusId());
+            if (p.getStatusId() != null) {
+                statusTarefaRepository.findById(p.getStatusId()).ifPresent(st -> f.setStatusName(st.getNome()));
+            }
 
         } catch (Exception e) {
             throw new ApiException("Erro ao desserializar campos JSON", e);

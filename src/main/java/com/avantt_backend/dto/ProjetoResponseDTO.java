@@ -9,6 +9,8 @@ public class ProjetoResponseDTO {
     private String description;
     private String color;
     private String status;
+    private Integer statusId;
+    private String statusName;
     @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate startDate;
     @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
@@ -35,6 +37,12 @@ public class ProjetoResponseDTO {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public Integer getStatusId() { return statusId; }
+    public void setStatusId(Integer statusId) { this.statusId = statusId; }
+
+    public String getStatusName() { return statusName; }
+    public void setStatusName(String statusName) { this.statusName = statusName; }
 
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
