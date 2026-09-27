@@ -1,12 +1,10 @@
 package com.avantt_backend.service;
 
-import com.avantt_backend.dto.MilestoneDTO;
 import com.avantt_backend.dto.ProjetoRequestDTO;
 import com.avantt_backend.dto.ProjetoResponseDTO;
 import com.avantt_backend.dto.SprintsDTO;
 import com.avantt_backend.dto.ProjectTasksDTO;
 import com.avantt_backend.util.StatusUtils;
-import com.avantt_backend.entity.MarcoProjeto;
 import com.avantt_backend.entity.Projeto;
 import com.avantt_backend.entity.ProjetoUsuario;
 import com.avantt_backend.entity.ProjetoUsuarioId;
@@ -16,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -24,30 +23,36 @@ public class ProjetoService {
     private final ProjetoRepository projetoRepository;
     private final UsuarioRepository usuarioRepository;
     private final ProjetoUsuarioRepository projetoUsuarioRepository;
-    private final MarcoProjetoRepository marcoProjetoRepository;
     private final SprintService sprintService;
     private final TarefaService tarefaService;
     private final SprintRepository sprintRepository;
     private final TarefaRepository tarefaRepository;
+    private final com.avantt_backend.repository.StatusTarefaRepository statusTarefaRepository;
+    private final com.avantt_backend.repository.OrganizacaoRepository organizacaoRepository;
+    private final com.avantt_backend.repository.ClienteRepository clienteRepository;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     public ProjetoService(ProjetoRepository projetoRepository,
                           UsuarioRepository usuarioRepository,
                           ProjetoUsuarioRepository projetoUsuarioRepository,
-                          MarcoProjetoRepository marcoProjetoRepository,
                           SprintService sprintService,
                           TarefaService tarefaService,
                           SprintRepository sprintRepository,
-                          TarefaRepository tarefaRepository) {
+                          TarefaRepository tarefaRepository,
+                          com.avantt_backend.repository.StatusTarefaRepository statusTarefaRepository,
+                          com.avantt_backend.repository.OrganizacaoRepository organizacaoRepository,
+                          com.avantt_backend.repository.ClienteRepository clienteRepository) {
         this.projetoRepository = projetoRepository;
         this.usuarioRepository = usuarioRepository;
         this.projetoUsuarioRepository = projetoUsuarioRepository;
-        this.marcoProjetoRepository = marcoProjetoRepository;
         this.sprintService = sprintService;
         this.tarefaService = tarefaService;
         this.sprintRepository = sprintRepository;
         this.tarefaRepository = tarefaRepository;
+        this.statusTarefaRepository = statusTarefaRepository;
+        this.organizacaoRepository = organizacaoRepository;
+        this.clienteRepository = clienteRepository;
     }
 
     @Transactional
@@ -56,40 +61,40 @@ public class ProjetoService {
         p.setName(dto.getName());
         p.setDescription(dto.getDescription());
         p.setColor(dto.getColor());
-        p.setStatus(StatusUtils.normalizeProjectStatus(dto.getStatus()));
+        // status resolution: dto validation ensures statusId presence
+        var stOpt = statusTarefaRepository.findById(dto.getStatusId());
+        if (stOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Status não encontrado: id=" + dto.getStatusId());
+        p.setStatusId(dto.getStatusId());
+        // cliente/organizacao (relation exists only via projeto)
+        if (dto.getClienteId() != null) {
+            if (!clienteRepository.existsById(dto.getClienteId()))
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Cliente não encontrado: id=" + dto.getClienteId());
+            p.setClienteId(dto.getClienteId());
+        }
+        if (dto.getOrganizacaoId() != null) {
+            if (!organizacaoRepository.existsById(dto.getOrganizacaoId()))
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Organização não encontrada: id=" + dto.getOrganizacaoId());
+            p.setOrganizacaoId(dto.getOrganizacaoId());
+        }
         p.setStartDate(dto.getStartDate());
-        p.setEndDate(dto.getEndDate());
         p.setProgress(dto.getProgress());
 
-        // risks: frontend sends list, DB expects a single VARCHAR nullable
-        if (dto.getRisks() == null || dto.getRisks().isEmpty()) {
-            p.setRisks(null);
+        if (dto.getEndDate() != null &&
+                dto.getEndDate().isBefore(dto.getStartDate().plusDays(15))) {
+            throw new ApiException("A data de fim deve ser pelo menos 15 dias após a data de início");
         } else {
-            // join into a single string
-            p.setRisks(String.join("; ", dto.getRisks()));
+            p.setEndDate(dto.getEndDate());
         }
 
         Projeto saved = projetoRepository.save(p);
 
-        // associate team
+        // associate team (list of user IDs). Validate all ids exist; return error on invalid user
         if (dto.getTeam() != null) {
-            for (String member : dto.getTeam()) {
-                Integer usuarioId = null;
-                try {
-                    // try parse as id
-                    usuarioId = Integer.valueOf(member);
-                    if (!usuarioRepository.findById(usuarioId).isPresent()) {
-                        throw new ApiException("Usuario com id " + usuarioId + " não encontrado");
-                    }
-                } catch (NumberFormatException nfe) {
-                    // not an id, try find by name
-                    var opt = usuarioRepository.findByNomeIgnoreCase(member);
-                    if (opt.isPresent()) {
-                        usuarioId = opt.get().getId();
-                    } else {
-                        throw new ApiException("Usuario com nome '" + member + "' não encontrado");
-                    }
-                }
+            for (Integer usuarioId : dto.getTeam()) {
+            if (usuarioId == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário inválido na lista de team");
+            if (!usuarioRepository.findById(usuarioId).isPresent()) {
+                    throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário não encontrado: id=" + usuarioId);
+            }
                 ProjetoUsuario pu = new ProjetoUsuario();
                 pu.setId(new ProjetoUsuarioId(saved.getId(), usuarioId));
                 pu.setPapel(null);
@@ -97,18 +102,82 @@ public class ProjetoService {
             }
         }
 
-        // create milestones
-        if (dto.getMilestones() != null) {
-            for (MilestoneDTO m : dto.getMilestones()) {
-                MarcoProjeto mp = new MarcoProjeto();
-                mp.setProjetoId(saved.getId());
-                mp.setNome(m.getName());
-                mp.setData(m.getDate());
-                mp.setConcluido(m.isDone());
-                marcoProjetoRepository.save(mp);
+        return toFrontend(saved);
+    }
+
+    @Transactional
+    public ProjetoResponseDTO update(Integer projetoId, ProjetoRequestDTO dto) {
+        var pOpt = projetoRepository.findById(projetoId);
+        if (pOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + projetoId);
+        var p = pOpt.get();
+
+        // validate status if provided
+        if (dto.getStatusId() != null) {
+            var stOpt = statusTarefaRepository.findById(dto.getStatusId());
+            if (stOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Status não encontrado: id=" + dto.getStatusId());
+            p.setStatusId(dto.getStatusId());
+        }
+
+        // cliente/organizacao updates
+        if (dto.getClienteId() != null) {
+            if (!clienteRepository.existsById(dto.getClienteId()))
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Cliente não encontrado: id=" + dto.getClienteId());
+            p.setClienteId(dto.getClienteId());
+        }
+        if (dto.getOrganizacaoId() != null) {
+            if (!organizacaoRepository.existsById(dto.getOrganizacaoId()))
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Organização não encontrada: id=" + dto.getOrganizacaoId());
+            p.setOrganizacaoId(dto.getOrganizacaoId());
+        }
+
+        // update basic fields
+        if (dto.getName() != null) p.setName(dto.getName());
+        if (dto.getDescription() != null) p.setDescription(dto.getDescription());
+        if (dto.getColor() != null) p.setColor(dto.getColor());
+
+        // dates: must respect minimum 15 days rule
+        java.time.LocalDate newStart = (dto.getStartDate() == null) ? p.getStartDate() : dto.getStartDate();
+        java.time.LocalDate newEnd = (dto.getEndDate() == null) ? p.getEndDate() : dto.getEndDate();
+        if (newStart != null && newEnd != null) {
+            if (newEnd.isBefore(newStart.plusDays(15))) {
+                throw new ApiException("A data de fim deve ser pelo menos 15 dias após a data de início");
+            }
+        }
+        p.setStartDate(newStart);
+        p.setEndDate(newEnd);
+
+        // team additions
+        if (dto.getAddTeam() != null && !dto.getAddTeam().isEmpty()) {
+            for (Integer usuarioId : dto.getAddTeam()) {
+                if (usuarioId == null) throw new ApiException("Usuário inválido na lista de team");
+                if (!usuarioRepository.findById(usuarioId).isPresent()) throw new ApiException("Usuário não encontrado: id=" + usuarioId);
+
+                var id = new ProjetoUsuarioId(p.getId(), usuarioId);
+                if (!projetoUsuarioRepository.existsById(id)) {
+                    ProjetoUsuario pu = new ProjetoUsuario();
+                    pu.setId(id);
+                    pu.setPapel(null);
+                    projetoUsuarioRepository.save(pu);
+                }
             }
         }
 
+        // team removals
+        if (dto.getRemoveTeam() != null && !dto.getRemoveTeam().isEmpty()) {
+            for (Integer usuarioId : dto.getRemoveTeam()) {
+                if (usuarioId == null) continue;
+                var id = new ProjetoUsuarioId(p.getId(), usuarioId);
+                if (!projetoUsuarioRepository.existsById(id)) continue; // nothing to remove
+
+                // ensure user not assigned to any task in this project
+                int assigned = tarefaRepository.countByProjetoIdAndAssignee(p.getId(), usuarioId);
+                if (assigned > 0) throw new ApiException("Não é possível remover o usuário: ele está associado a tarefas deste projeto: id=" + usuarioId);
+
+                projetoUsuarioRepository.deleteById(id);
+            }
+        }
+
+        Projeto saved = projetoRepository.save(p);
         return toFrontend(saved);
     }
 
@@ -123,7 +192,14 @@ public class ProjetoService {
         f.setName(p.getName());
         f.setDescription(p.getDescription());
         f.setColor(p.getColor());
-        f.setStatus(p.getStatus());
+        // set status normalized string for frontend based on statusId
+        if (p.getStatusId() != null) {
+            var st = statusTarefaRepository.findById(p.getStatusId());
+            if (st.isPresent()) f.setStatus(StatusUtils.normalizeProjectStatus(st.get().getNome()));
+            else f.setStatus(null);
+        } else {
+            f.setStatus(null);
+        }
         f.setStartDate(p.getStartDate());
         f.setEndDate(p.getEndDate());
         f.setProgress(p.getProgress() == null ? 0 : p.getProgress());
@@ -172,33 +248,21 @@ public class ProjetoService {
                 teamNames = temp;
             }
 
-            // risks -> stored as single string; convert to list for frontend
-            List<String> risks = java.util.Collections.emptyList();
-            if (p.getRisks() != null && !p.getRisks().isBlank()) {
-                risks = java.util.Arrays.stream(p.getRisks().split(";"))
-                        .map(String::trim).filter(s0 -> !s0.isEmpty()).toList();
-            }
-
-            // milestones -> load from marco_projeto
-            List<MilestoneDTO> milestones = java.util.Collections.emptyList();
-            var mlist = marcoProjetoRepository.findByProjetoId(p.getId());
-            if (mlist != null && !mlist.isEmpty()) {
-                var temp = new java.util.ArrayList<MilestoneDTO>();
-                for (var mp : mlist) {
-                    MilestoneDTO md = new MilestoneDTO();
-                    md.setName(mp.getNome());
-                    md.setDate(mp.getData());
-                    md.setDone(mp.getConcluido() == null ? false : mp.getConcluido());
-                    temp.add(md);
-                }
-                milestones = temp;
-            }
-
             f.setSprints(s);
             f.setTasks(t);
             f.setTeam(teamNames);
-            f.setRisks(risks);
-            f.setMilestones(milestones);
+            // include relacionamentos
+            f.setClienteId(p.getClienteId());
+            f.setOrganizacaoId(p.getOrganizacaoId());
+            if (p.getOrganizacaoId() != null) {
+                organizacaoRepository.findById(p.getOrganizacaoId()).ifPresent(org -> f.setOrganizacaoName(org.getNomeFantasia()));
+            }
+            // set status id/name for the project based on stored status id
+            f.setStatusId(p.getStatusId());
+            if (p.getStatusId() != null) {
+                statusTarefaRepository.findById(p.getStatusId()).ifPresent(st -> f.setStatusName(st.getNome()));
+            }
+
         } catch (Exception e) {
             throw new ApiException("Erro ao desserializar campos JSON", e);
         }

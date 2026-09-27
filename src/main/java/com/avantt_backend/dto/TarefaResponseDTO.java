@@ -14,6 +14,8 @@ public class TarefaResponseDTO {
     private String avatarColor;
     private String priority;
     private String status;
+    private Integer statusId;
+    private String statusName;
     private int daysDelayed;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
@@ -21,7 +23,8 @@ public class TarefaResponseDTO {
 
     private Integer estimatedHours;
     private String blockedBy;
-    private List<String> tags;
+    private String description;
+    private List<Integer> tagIds;
 
     public TarefaResponseDTO() {}
 
@@ -53,6 +56,12 @@ public class TarefaResponseDTO {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
+    public Integer getStatusId() { return statusId; }
+    public void setStatusId(Integer statusId) { this.statusId = statusId; }
+
+    public String getStatusName() { return statusName; }
+    public void setStatusName(String statusName) { this.statusName = statusName; }
+
     public int getDaysDelayed() { return daysDelayed; }
     public void setDaysDelayed(int daysDelayed) { this.daysDelayed = daysDelayed; }
 
@@ -65,6 +74,9 @@ public class TarefaResponseDTO {
     public String getBlockedBy() { return blockedBy; }
     public void setBlockedBy(String blockedBy) { this.blockedBy = blockedBy; }
 
-    public List<String> getTags() { return tags; }
-    public void setTags(List<String> tags) { this.tags = tags; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public List<Integer> getTagIds() { return tagIds; }
+    public void setTagIds(List<Integer> tagIds) { this.tagIds = tagIds; }
 }

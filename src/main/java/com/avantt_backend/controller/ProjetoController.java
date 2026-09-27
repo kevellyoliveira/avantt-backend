@@ -1,6 +1,7 @@
 package com.avantt_backend.controller;
 
 import com.avantt_backend.dto.ProjetoResponseDTO;
+import com.avantt_backend.dto.ErrorResponse;
 import com.avantt_backend.dto.ProjetoRequestDTO;
 import com.avantt_backend.service.ProjetoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,45 +34,48 @@ public class ProjetoController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Projeto criado com sucesso",
                      content = @Content(schema = @Schema(implementation = ProjetoResponseDTO.class))),
-        @ApiResponse(responseCode = "409", description = "Conflito ao criar o projeto"),
-        @ApiResponse(responseCode = "500", description = "Erro interno do servidor")
+        @ApiResponse(responseCode = "409", description = "Conflito ao criar o projeto",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "Erro interno do servidor",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping(path = PROJETOS, consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> createProjeto(@Valid @RequestBody ProjetoRequestDTO request) {
-        try {
-            var created = projetoService.create(request);
+        var created = projetoService.create(request);
+        if (created == null) throw new com.avantt_backend.exception.ConflictException(MENSAGEM_ERRO_CRIAR_PROJETO_409);
+        return ResponseEntity.status(201).body(created);
+    }
 
-            if (created == null) {
-                return ResponseEntity.status(409).body(MENSAGEM_ERRO_CRIAR_PROJETO_409);
-            }
-
-            return ResponseEntity.status(201).body(created);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+    @Operation(summary = "Atualizar projeto", description = "Atualiza um projeto existente. Mantém as regras de validação de datas (mínimo 15 dias) e permite adicionar/remover membros do projeto.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Projeto atualizado com sucesso",
+                     content = @Content(schema = @Schema(implementation = ProjetoResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Requisição inválida",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Projeto não encontrado",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "Erro interno do servidor",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PutMapping(path = PROJETOS + "/{id}", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<?> updateProjeto(@PathVariable Integer id, @Valid @RequestBody ProjetoRequestDTO request) {
+        var updated = projetoService.update(id, request);
+        return ResponseEntity.ok(updated);
     }
 
     @Operation(summary = "Listar projetos", description = "Retorna uma lista de todos os projetos cadastrados.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Lista de projetos retornada com sucesso",
                      content = @Content(schema = @Schema(implementation = ProjetoResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "Nenhum projeto encontrado"),
-        @ApiResponse(responseCode = "500", description = "Erro interno do servidor")
+        @ApiResponse(responseCode = "404", description = "Nenhum projeto encontrado",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "Erro interno do servidor",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping(path = PROJETOS, produces = "application/json")
     public ResponseEntity<?> listProjetos() {
-        try {
-            List<ProjetoResponseDTO> list = projetoService.listAll();
-
-            if (list.isEmpty()) {
-                return ResponseEntity.status(404).body(MENSAGEM_ERRO_LISTAR_PROJETOS_404);
-            }
-
-            return ResponseEntity.ok(list);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+        List<ProjetoResponseDTO> list = projetoService.listAll();
+        if (list.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException(MENSAGEM_ERRO_LISTAR_PROJETOS_404);
+        return ResponseEntity.ok(list);
     }
 }

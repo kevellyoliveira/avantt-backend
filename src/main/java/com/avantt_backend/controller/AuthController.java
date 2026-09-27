@@ -23,95 +23,85 @@ public class AuthController {
 
     @PostMapping("/register")
     @Operation(summary = "Registrar novo usuário")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Usuário registrado com sucesso"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Email já cadastrado",
+                content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = com.avantt_backend.dto.ErrorResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Erro interno do servidor",
+                content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = com.avantt_backend.dto.ErrorResponse.class)))
+    })
     public ResponseEntity<?> register(@RequestBody RegisterRequestDTO req) {
-        try {
-            var res = authService.register(req);
-            if (res == null) return ResponseEntity.status(409).body(MENSAGEM_EMAIL_CADASTRADO_409);
-            return ResponseEntity.status(201).body(res);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+        var res = authService.register(req);
+        if (res == null) throw new com.avantt_backend.exception.ConflictException(MENSAGEM_EMAIL_CADASTRADO_409);
+        return ResponseEntity.status(201).body(res);
     }
 
     @PostMapping("/login")
     @Operation(summary = "Login")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login bem-sucedido"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Credenciais inválidas",
+                content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = com.avantt_backend.dto.ErrorResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Erro interno do servidor",
+                content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = com.avantt_backend.dto.ErrorResponse.class)))
+    })
     public ResponseEntity<?> login(@RequestBody AuthRequestDTO req) {
-        try {
-            var res = authService.login(req);
-            if (res == null) return ResponseEntity.status(401).body(MENSAGEM_CREDENCIAIS_INVALIDAS_401);
-            // Return token also in the Authorization response header to simplify use in Swagger UI
-            String headerValue = "Bearer " + res.getToken();
-            return ResponseEntity.ok().header("Authorization", headerValue).body(res);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+        var res = authService.login(req);
+        if (res == null) throw new com.avantt_backend.exception.UnauthorizedException(MENSAGEM_CREDENCIAIS_INVALIDAS_401);
+        // Return token also in the Authorization response header to simplify use in Swagger UI
+        String headerValue = "Bearer " + res.getToken();
+        return ResponseEntity.ok().header("Authorization", headerValue).body(res);
     }
 
     @PostMapping("/logout")
     @Operation(summary = "Logout")
     @SecurityRequirement(name = "bearerAuth")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Logout realizado"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Token ausente",
+                content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = com.avantt_backend.dto.ErrorResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Token inválido",
+                content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = com.avantt_backend.dto.ErrorResponse.class)))
+    })
     public ResponseEntity<?> logout(HttpServletRequest request) {
+        String authorization = request.getHeader("Authorization");
 
-        try {
-            String authorization = request.getHeader("Authorization");
-
-            System.out.println("======================================");
-            System.out.println("AUTHORIZATION RECEBIDO: [" + authorization + "]");
-
-            if (authorization == null || authorization.isBlank()) {
-                System.out.println(">>> TOKEN AUSENTE");
-                return ResponseEntity.badRequest().body("Token ausente");
-            }
-
-            String token = authorization;
-
-            if (authorization.toLowerCase().startsWith("bearer ")) {
-                token = authorization.substring(7);
-            }
-
-            token = token.trim();
-
-            System.out.println("TOKEN EXTRAIDO: [" + token + "]");
-
-            boolean ok = authService.logout(token);
-
-            System.out.println("LOGOUT RETORNOU: " + ok);
-
-            if (!ok) {
-                return ResponseEntity.status(401).body("Token inválido");
-            }
-
-            System.out.println(">>> LOGOUT OK");
-
-            return ResponseEntity.ok().build();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
+        if (authorization == null || authorization.isBlank()) {
+            throw new IllegalArgumentException(MENSAGEM_TOKEN_AUSENTE);
         }
+
+        String token = authorization;
+        if (authorization.toLowerCase().startsWith("bearer ")) token = authorization.substring(7);
+        token = token.trim();
+
+        boolean ok = authService.logout(token);
+        if (!ok) throw new com.avantt_backend.exception.UnauthorizedException(MENSAGEM_TOKEN_INVALIDO);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/password-reset/request")
     @Operation(summary = "Solicitar redefinição de senha")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Token de reset retornado"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Email não encontrado",
+                content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = com.avantt_backend.dto.ErrorResponse.class)))
+    })
     public ResponseEntity<?> passwordResetRequest(@RequestBody PasswordResetRequestDTO req) {
-        try {
-            String token = authService.requestPasswordReset(req);
-            if (token == null) return ResponseEntity.status(404).body(MENSAGEM_ERRO_EMAIL_404);
-            return ResponseEntity.ok(java.util.Map.of("resetToken", token));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+        String token = authService.requestPasswordReset(req);
+        if (token == null) throw new com.avantt_backend.exception.ResourceNotFoundException(MENSAGEM_ERRO_EMAIL_404);
+        return ResponseEntity.ok(java.util.Map.of("resetToken", token));
     }
 
     @PostMapping("/password-reset/confirm")
     @Operation(summary = "Confirmar redefinição de senha")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Senha resetada"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Token inválido ou expirado",
+                content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = com.avantt_backend.dto.ErrorResponse.class)))
+    })
     public ResponseEntity<?> passwordResetConfirm(@RequestBody PasswordResetConfirmDTO req) {
-        try {
-            boolean ok = authService.confirmPasswordReset(req);
-            if (!ok) return ResponseEntity.status(400).body(MENSAGEM_ERRO_TOKEN_400);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+        boolean ok = authService.confirmPasswordReset(req);
+        if (!ok) throw new com.avantt_backend.exception.ApiException(MENSAGEM_ERRO_TOKEN_400);
+        return ResponseEntity.ok().build();
     }
 }

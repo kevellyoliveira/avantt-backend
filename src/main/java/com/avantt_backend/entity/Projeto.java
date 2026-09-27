@@ -24,9 +24,17 @@ public class Projeto {
     @Column(name = "cor", length = 20)
     private String color;
 
-    // maps to projeto.status
-    @Column(name = "status", length = 50)
-    private String status;
+    // maps to projeto.status_id
+    @Column(name = "status_id")
+    private Integer statusId;
+
+    // maps to projeto.cliente_id
+    @Column(name = "cliente_id")
+    private Integer clienteId;
+
+    // maps to projeto.organizacao_id
+    @Column(name = "organizacao_id")
+    private Integer organizacaoId;
 
     // maps to projeto.data_inicio
     @Column(name = "data_inicio")
@@ -39,10 +47,6 @@ public class Projeto {
     // maps to projeto.progresso
     @Column(name = "progresso")
     private Integer progress;
-
-    // maps to projeto.risco (single string, nullable)
-    @Column(name = "risco", length = 255)
-    private String risks;
 
     public Projeto() {}
 
@@ -59,8 +63,14 @@ public class Projeto {
     public String getColor() { return color; }
     public void setColor(String color) { this.color = color; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public Integer getStatusId() { return statusId; }
+    public void setStatusId(Integer statusId) { this.statusId = statusId; }
+
+    public Integer getClienteId() { return clienteId; }
+    public void setClienteId(Integer clienteId) { this.clienteId = clienteId; }
+
+    public Integer getOrganizacaoId() { return organizacaoId; }
+    public void setOrganizacaoId(Integer organizacaoId) { this.organizacaoId = organizacaoId; }
 
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
@@ -70,8 +80,5 @@ public class Projeto {
 
     public Integer getProgress() { return progress; }
     public void setProgress(Integer progress) { this.progress = progress; }
-
-    public String getRisks() { return risks; }
-    public void setRisks(String risks) { this.risks = risks; }
 
 }

@@ -38,7 +38,11 @@ public class UsuarioService {
         entity.setNome(dto.getName());
         entity.setEmail(dto.getEmail());
         entity.setCargo(dto.getRole());
-        // perfilId and organizacaoId are not provided by frontend; leave null or set defaults if needed
+        // perfilId existence is validated via ExistenceRepository; DTO validation ensures non-null
+        if (!existenceRepository.existsPerfilById(dto.getPerfilId())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Perfil não encontrado: id=" + dto.getPerfilId());
+        entity.setPerfilId(dto.getPerfilId());
+
+        // organizacaoId is optional
 
         Usuario saved = usuarioRepository.save(entity);
 

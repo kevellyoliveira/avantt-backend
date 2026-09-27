@@ -13,6 +13,10 @@ public final class ApiPaths {
     public static final String TAREFAS = API + "/tarefas";
     public static final String SPRINTS = API + "/sprints";
     public static final String PROJETOS = API + "/projetos";
+    // generic status endpoint (replaces previous status-tarefas)
+    public static final String STATUS = API + "/status";
+    // kept for backward compatibility (deprecated)
+    public static final String STATUS_TAREFAS = API + "/status-tarefas";
     public static final String USUARIOS = API + "/usuarios";
 
 }

@@ -9,6 +9,8 @@ public class ProjetoResponseDTO {
     private String description;
     private String color;
     private String status;
+    private Integer statusId;
+    private String statusName;
     @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate startDate;
     @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
@@ -17,8 +19,9 @@ public class ProjetoResponseDTO {
     private SprintsDTO sprints;
     private ProjectTasksDTO tasks;
     private List<String> team;
-    private List<String> risks;
-    private List<MilestoneDTO> milestones;
+    private Integer clienteId;
+    private Integer organizacaoId;
+    private String organizacaoName;
 
     public ProjetoResponseDTO() {}
 
@@ -38,6 +41,12 @@ public class ProjetoResponseDTO {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
+    public Integer getStatusId() { return statusId; }
+    public void setStatusId(Integer statusId) { this.statusId = statusId; }
+
+    public String getStatusName() { return statusName; }
+    public void setStatusName(String statusName) { this.statusName = statusName; }
+
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
 
@@ -56,9 +65,13 @@ public class ProjetoResponseDTO {
     public List<String> getTeam() { return team; }
     public void setTeam(List<String> team) { this.team = team; }
 
-    public List<String> getRisks() { return risks; }
-    public void setRisks(List<String> risks) { this.risks = risks; }
+    public Integer getClienteId() { return clienteId; }
+    public void setClienteId(Integer clienteId) { this.clienteId = clienteId; }
 
-    public List<MilestoneDTO> getMilestones() { return milestones; }
-    public void setMilestones(List<MilestoneDTO> milestones) { this.milestones = milestones; }
+    public Integer getOrganizacaoId() { return organizacaoId; }
+    public void setOrganizacaoId(Integer organizacaoId) { this.organizacaoId = organizacaoId; }
+
+    public String getOrganizacaoName() { return organizacaoName; }
+    public void setOrganizacaoName(String organizacaoName) { this.organizacaoName = organizacaoName; }
+
 }

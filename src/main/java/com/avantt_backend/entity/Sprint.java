@@ -22,8 +22,8 @@ public class Sprint {
     @Column(name = "data_fim")
     private LocalDate dataFim;
 
-    @Column(name = "status", length = 50)
-    private String status;
+    @Column(name = "status_id")
+    private Integer statusId;
 
     public Sprint() {}
 
@@ -43,6 +43,6 @@ public class Sprint {
     public LocalDate getDataFim() { return dataFim; }
     public void setDataFim(LocalDate dataFim) { this.dataFim = dataFim; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public Integer getStatusId() { return statusId; }
+    public void setStatusId(Integer statusId) { this.statusId = statusId; }
 }

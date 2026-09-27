@@ -1,6 +1,7 @@
 package com.avantt_backend.controller;
 
 import com.avantt_backend.dto.UsuarioResponseDTO;
+import com.avantt_backend.dto.ErrorResponse;
 import com.avantt_backend.dto.UsuarioRequestDTO;
 import com.avantt_backend.service.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,61 +34,46 @@ public class UsuarioController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Usuário criado com sucesso",
                      content = @Content(schema = @Schema(implementation = UsuarioResponseDTO.class))),
-        @ApiResponse(responseCode = "409", description = "Conflito ao criar o usuário"),
-        @ApiResponse(responseCode = "500", description = "Erro interno do servidor")
+        @ApiResponse(responseCode = "409", description = "Conflito ao criar o usuário",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "Erro interno do servidor",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping(path = USUARIOS, consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> createUsuario(@Valid @RequestBody UsuarioRequestDTO request) {
-        try {
-            UsuarioResponseDTO response = usuarioService.create(request);
-            if (response == null) {
-                return ResponseEntity.status(409).body(MENSAGEM_ERRO_CRIAR_USUARIO_409);
-            }
-            return ResponseEntity.status(201).body(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
-
+        UsuarioResponseDTO response = usuarioService.create(request);
+        if (response == null) throw new com.avantt_backend.exception.ConflictException(MENSAGEM_ERRO_CRIAR_USUARIO_409);
+        return ResponseEntity.status(201).body(response);
     }
 
     @Operation(summary = "Listar usuários", description = "Retorna uma lista de todos os usuários cadastrados.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Lista de usuários retornada com sucesso",
                      content = @Content(schema = @Schema(implementation = UsuarioResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "Nenhum usuário encontrado"),
-        @ApiResponse(responseCode = "500", description = "Erro interno do servidor")
+        @ApiResponse(responseCode = "404", description = "Nenhum usuário encontrado",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "Erro interno do servidor",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping(path = USUARIOS, produces = "application/json")
     public ResponseEntity<?> listUsuarios(@RequestParam(value = "projetoId", required = false) Integer projetoId) {
-        try {
-            List<UsuarioResponseDTO> list = usuarioService.listAll(projetoId);
-            return ResponseEntity.ok(list);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+        List<UsuarioResponseDTO> list = usuarioService.listAll(projetoId);
+        return ResponseEntity.ok(list);
     }
 
     @Operation(summary = "Atualizar um usuário", description = "Atualiza os dados de um usuário existente.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Usuário atualizado com sucesso",
                      content = @Content(schema = @Schema(implementation = UsuarioResponseDTO.class))),
-        @ApiResponse(responseCode = "404", description = "Usuário não encontrado"),
-        @ApiResponse(responseCode = "500", description = "Erro interno do servidor")
+        @ApiResponse(responseCode = "404", description = "Usuário não encontrado",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "Erro interno do servidor",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping(path = USUARIOS + "/{id}", consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> patchUsuario(@Valid @PathVariable Integer id, @RequestBody UsuarioRequestDTO request) {
-        try {
-            UsuarioResponseDTO updated = usuarioService.update(id, request);
-
-            if (updated == null) {
-                return ResponseEntity.status(404).body(MENSAGEM_ERRO_EDITAR_USUARIO_404);
-            }
-
-            return ResponseEntity.status(200).body(updated);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(MENSAGEM_ERRO_INTERNO_500);
-        }
+        UsuarioResponseDTO updated = usuarioService.update(id, request);
+        if (updated == null) throw new com.avantt_backend.exception.ResourceNotFoundException(MENSAGEM_ERRO_EDITAR_USUARIO_404);
+        return ResponseEntity.status(200).body(updated);
     }
 }
