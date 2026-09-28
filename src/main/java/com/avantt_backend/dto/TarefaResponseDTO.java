@@ -25,6 +25,7 @@ public class TarefaResponseDTO {
     private String blockedBy;
     private String description;
     private List<Integer> tagIds;
+    private Integer sprintProgress;
 
     public TarefaResponseDTO() {}
 
@@ -79,4 +80,7 @@ public class TarefaResponseDTO {
 
     public List<Integer> getTagIds() { return tagIds; }
     public void setTagIds(List<Integer> tagIds) { this.tagIds = tagIds; }
+
+    public Integer getSprintProgress() { return sprintProgress; }
+    public void setSprintProgress(Integer sprintProgress) { this.sprintProgress = sprintProgress; }
 }

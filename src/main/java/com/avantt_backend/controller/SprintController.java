@@ -52,4 +52,29 @@ public class SprintController {
         var updated = sprintService.update(id, request);
         return ResponseEntity.ok(updated);
     }
+
+    @Operation(summary = "Atualizar status da sprint", description = "Altera apenas o status de uma sprint.")
+    @PatchMapping(path = "/{id}/status", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<?> patchSprintStatus(
+            @Parameter(description = "ID da sprint a ser atualizada", required = true)
+            @PathVariable Integer id,
+            @RequestBody java.util.Map<String, Integer> body) {
+        Integer statusId = body.get("statusId");
+        var updated = sprintService.updateStatus(id, statusId);
+        return ResponseEntity.ok(updated);
+    }
+
+    @Operation(summary = "Obter progresso da sprint", description = "Recalcula e retorna o progresso da sprint (0..100).")
+    @GetMapping(path = "/{id}/progress", produces = "application/json")
+    public ResponseEntity<?> getSprintProgress(
+            @Parameter(description = "ID da sprint", required = true)
+            @PathVariable Integer id) {
+        var info = sprintService.recalculateAndPersistProgress(id);
+        java.util.Map<String,Object> out = new java.util.HashMap<>();
+        out.put("id", id);
+        out.put("progress", info.progress);
+        out.put("totalTasks", info.total);
+        out.put("doneTasks", info.done);
+        return ResponseEntity.ok(out);
+    }
 }

@@ -93,4 +93,12 @@ public class TarefaController {
         var updated = tarefaService.updatePriority(id, prioridadeId);
         return ResponseEntity.ok(updated);
     }
+
+    @Operation(summary = "Atualizar status da tarefa", description = "Altera apenas o status de uma tarefa e recalcula o progresso da sprint associada.")
+    @PatchMapping(path = "/{id}/status", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<?> patchStatus(@PathVariable Integer id, @RequestBody java.util.Map<String, Integer> body) {
+        Integer statusId = body.get("statusId");
+        var updated = tarefaService.updateStatus(id, statusId);
+        return ResponseEntity.ok(updated);
+    }
 }

@@ -78,4 +78,16 @@ public class ProjetoController {
         if (list.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException(MENSAGEM_ERRO_LISTAR_PROJETOS_404);
         return ResponseEntity.ok(list);
     }
+
+    @Operation(summary = "Obter progresso do projeto", description = "Recalcula e retorna o progresso do projeto (0..100) baseado nas sprints.")
+    @GetMapping(path = PROJETOS + "/{id}/progress", produces = "application/json")
+    public ResponseEntity<?> getProjectProgress(@PathVariable Integer id) {
+        var info = projetoService.getProgress(id);
+        java.util.Map<String,Object> out = new java.util.HashMap<>();
+        out.put("id", id);
+        out.put("progress", info == null ? 0 : info.progress);
+        out.put("totalTasks", info == null ? 0 : info.totalTasks);
+        out.put("doneTasks", info == null ? 0 : info.doneTasks);
+        return ResponseEntity.ok(out);
+    }
 }

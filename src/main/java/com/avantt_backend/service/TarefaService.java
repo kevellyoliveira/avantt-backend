@@ -18,6 +18,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.avantt_backend.util.StatusUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,6 +30,7 @@ public class TarefaService {
     private final TarefaRepository tarefaRepository;
     private final ProjetoRepository projetoRepository;
     private final SprintRepository sprintRepository;
+    private final com.avantt_backend.service.SprintService sprintService;
     private final UsuarioRepository usuarioRepository;
     private final PrioridadeRepository prioridadeRepository;
     private final StatusTarefaRepository statusTarefaRepository;
@@ -37,10 +40,11 @@ public class TarefaService {
     private final com.avantt_backend.repository.TarefaTagRepository tarefaTagRepository;
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    public TarefaService(TarefaRepository tarefaRepository, ProjetoRepository projetoRepository, SprintRepository sprintRepository, UsuarioRepository usuarioRepository, PrioridadeRepository prioridadeRepository, StatusTarefaRepository statusTarefaRepository, com.avantt_backend.repository.SprintUsuarioRepository sprintUsuarioRepository, com.avantt_backend.repository.ProjetoUsuarioRepository projetoUsuarioRepository, com.avantt_backend.repository.TagRepository tagRepository, com.avantt_backend.repository.TarefaTagRepository tarefaTagRepository) {
+    public TarefaService(TarefaRepository tarefaRepository, ProjetoRepository projetoRepository, SprintRepository sprintRepository, com.avantt_backend.service.SprintService sprintService, UsuarioRepository usuarioRepository, PrioridadeRepository prioridadeRepository, StatusTarefaRepository statusTarefaRepository, com.avantt_backend.repository.SprintUsuarioRepository sprintUsuarioRepository, com.avantt_backend.repository.ProjetoUsuarioRepository projetoUsuarioRepository, com.avantt_backend.repository.TagRepository tagRepository, com.avantt_backend.repository.TarefaTagRepository tarefaTagRepository) {
         this.tarefaRepository = tarefaRepository;
         this.projetoRepository = projetoRepository;
         this.sprintRepository = sprintRepository;
+        this.sprintService = sprintService;
         this.usuarioRepository = usuarioRepository;
         this.prioridadeRepository = prioridadeRepository;
         this.statusTarefaRepository = statusTarefaRepository;
@@ -48,6 +52,29 @@ public class TarefaService {
         this.projetoUsuarioRepository = projetoUsuarioRepository;
         this.tagRepository = tagRepository;
         this.tarefaTagRepository = tarefaTagRepository;
+    }
+
+    private static final Logger log = LoggerFactory.getLogger(TarefaService.class);
+
+    // Ensure pending changes are flushed so the recalculation sees the updated task state,
+    // then run the recalculation. This runs in the current transaction context so the
+    // sprint progress update will be committed together with the task change.
+    private void scheduleSprintProgressRecalculation(Integer sprintId) {
+        if (sprintId == null) return;
+        try {
+            log.debug("scheduleSprintProgressRecalculation: flushing changes for sprintId={}", sprintId);
+            // flush pending task changes so queries used by the recalculation see them
+            tarefaRepository.flush();
+        } catch (Exception e) {
+            log.warn("scheduleSprintProgressRecalculation: flush failed for sprintId={}: {}", sprintId, e.getMessage());
+        }
+        try {
+            log.debug("scheduleSprintProgressRecalculation: running recalc for sprintId={}", sprintId);
+            sprintService.recalculateAndPersistProgress(sprintId);
+            log.debug("scheduleSprintProgressRecalculation: recalc completed for sprintId={}", sprintId);
+        } catch (Exception e) {
+            log.warn("scheduleSprintProgressRecalculation: recalc failed for sprintId={}: {}", sprintId, e.getMessage());
+        }
     }
 
     @Transactional
@@ -155,6 +182,9 @@ public class TarefaService {
             }
         } catch (Exception e) { throw new RuntimeException(e); }
 
+        // after creating a task, schedule recalculation of sprint progress after commit
+        scheduleSprintProgressRecalculation(saved.getSprintId());
+
         TarefaResponseDTO r = new TarefaResponseDTO();
         r.setId(saved.getId() == null ? null : String.valueOf(saved.getId()));
         r.setTitle(saved.getNome() == null ? saved.getTitulo() : saved.getNome());
@@ -186,6 +216,10 @@ public class TarefaService {
         var tOpt = tarefaRepository.findById(tarefaId);
         if (tOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Tarefa não encontrada: id=" + tarefaId);
         var t = tOpt.get();
+
+        // capture old sprint/status to know which sprints need recalculation after update
+        Integer oldSprintId = t.getSprintId();
+        Integer oldStatusId = t.getStatusId();
 
         // title/nome
         if (dto.getTitle() != null && !dto.getTitle().isBlank()) t.setNome(dto.getTitle());
@@ -301,6 +335,15 @@ public class TarefaService {
             r.setTagIds(ids);
         } catch (Exception e) { r.setTagIds(java.util.Collections.emptyList()); }
         r.setDescription(saved.getDescricao());
+        // schedule recalculation for affected sprints after commit
+        Integer newSprintId = saved.getSprintId();
+        if (oldSprintId != null && !oldSprintId.equals(newSprintId)) scheduleSprintProgressRecalculation(oldSprintId);
+        if (newSprintId != null) {
+            if (oldStatusId == null || !oldStatusId.equals(saved.getStatusId()) || oldSprintId == null || !oldSprintId.equals(newSprintId)) {
+                scheduleSprintProgressRecalculation(newSprintId);
+            }
+        }
+
         return r;
     }
 
@@ -437,6 +480,31 @@ public class TarefaService {
         t.setAssignee(assigneeId);
         Tarefa saved = tarefaRepository.save(t);
         return toResponse(saved);
+    }
+
+    @Transactional
+    public TarefaResponseDTO updateStatus(Integer tarefaId, Integer statusId) {
+        var tOpt = tarefaRepository.findById(tarefaId);
+        if (tOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Tarefa não encontrada: id=" + tarefaId);
+        if (statusId == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Status inválido: id=null");
+
+        var stOpt = statusTarefaRepository.findById(statusId);
+        if (stOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Status não encontrado: id=" + statusId);
+
+        var t = tOpt.get();
+        t.setStatusId(statusId);
+        String statusNorm = StatusUtils.normalizeTaskStatus(stOpt.get().getNome());
+        t.setStatus(statusNorm == null ? t.getStatus() : statusNorm);
+
+        Tarefa saved = tarefaRepository.save(t);
+
+        // flush and immediately recalculate sprint progress so caller can get updated value
+        try { tarefaRepository.flush(); } catch (Exception ignored) {}
+        com.avantt_backend.service.SprintService.ProgressInfo info = sprintService.recalculateAndPersistProgress(saved.getSprintId());
+
+        TarefaResponseDTO response = toResponse(saved);
+        if (info != null) response.setSprintProgress(info.progress);
+        return response;
     }
 
     private java.util.List<String> parseTags(String tagsJson) {

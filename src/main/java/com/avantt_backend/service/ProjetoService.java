@@ -55,6 +55,11 @@ public class ProjetoService {
         this.clienteRepository = clienteRepository;
     }
 
+    // Return current progress info for a project (recalculates from sprints)
+    public com.avantt_backend.service.SprintService.ProjectProgressInfo getProgress(Integer projetoId) {
+        return sprintService.recalculateAndPersistProjectProgress(projetoId);
+    }
+
     @Transactional
     public ProjetoResponseDTO create(ProjetoRequestDTO dto) {
         Projeto p = new Projeto();
