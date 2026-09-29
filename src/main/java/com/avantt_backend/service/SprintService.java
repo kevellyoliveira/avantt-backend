@@ -10,20 +10,22 @@ import com.avantt_backend.repository.TarefaRepository;
 import com.avantt_backend.repository.ProjetoUsuarioRepository;
 import com.avantt_backend.repository.UsuarioRepository;
 import com.avantt_backend.entity.ProjetoUsuario;
-import com.avantt_backend.entity.ProjetoUsuarioId;
-import com.avantt_backend.entity.Usuario;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import com.avantt_backend.util.StatusUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import com.avantt_backend.entity.SprintUsuarioId;
-import com.avantt_backend.entity.SprintUsuario;
+
+import com.avantt_backend.entity.Tarefa;
 
 @Service
 public class SprintService {
@@ -50,6 +52,175 @@ public class SprintService {
         this.usuarioRepository = usuarioRepository;
         this.statusTarefaRepository = statusTarefaRepository;
         this.sprintUsuarioRepository = sprintUsuarioRepository;
+    }
+
+    private static final Logger log = LoggerFactory.getLogger(SprintService.class);
+
+    // Regra de cálculo do progresso (explicação):
+    // - Seleciona todas as tarefas com tarefa.sprint_id = sprintId.
+    // - Exclui do denominador todas as tarefas cujo status é considerado "Cancelado" (StatusUtils.isCancelled).
+    // - Conta como "concluída" qualquer tarefa cujo status é considerado concluído (StatusUtils.isDone).
+    // - progress% = round(100 * done_count / total_count), onde total_count é o número de tarefas
+    //   consideradas (ou seja, sem as canceladas). Se total_count == 0, progress = 0.
+    // - O nome do status é obtido preferencialmente do campo Tarefa.status; se estiver vazio e houver
+    //   status_id, resolve-se o nome via StatusTarefaRepository (batch lookup para evitar N+1).
+    // - computeProgressInfo apenas calcula os valores (total, done, progress) em memória;
+    //   recalculateAndPersistProgress grava o resultado em sprint.progresso.
+    // - Esta função é chamada automaticamente após criação/atualização de tarefas e também está
+    //   disponível via endpoint GET /api/sprints/{id}/progress para recalculo sob demanda.
+    // - Resultado persistido: sprint.progresso (INT 0..100).
+    // Observação: não usamos story points; o cálculo é por contagem de tarefas, excluindo canceladas.
+    // simple holder for progress computation results
+    public static class ProgressInfo {
+        public final int total;
+        public final int done;
+        public final int progress; // 0..100
+        public ProgressInfo(int total, int done, int progress) { this.total = total; this.done = done; this.progress = progress; }
+    }
+
+    // compute progress info for a sprint without persisting
+    private ProgressInfo computeProgressInfo(Integer sprintId) {
+        if (sprintId == null) return new ProgressInfo(0,0,0);
+        log.debug("computeProgressInfo: sprintId={}", sprintId);
+        java.util.List<Tarefa> tasks = tarefaRepository.findBySprintId(sprintId);
+        if (tasks == null || tasks.isEmpty()) {
+            log.debug("computeProgressInfo: sprintId={} no tasks found", sprintId);
+            return new ProgressInfo(0,0,0);
+        }
+
+        // collect status ids for batch lookup
+        java.util.Set<Integer> statusIds = new java.util.HashSet<>();
+        for (var t : tasks) { if (t.getStatusId() != null) statusIds.add(t.getStatusId()); }
+
+        java.util.Map<Integer, String> statusNamesById = new java.util.HashMap<>();
+        if (!statusIds.isEmpty()) {
+            statusTarefaRepository.findAllById(statusIds).forEach(s -> statusNamesById.put(s.getId(), s.getNome()));
+        }
+
+        // precompute status flags by id to avoid relying only on string matching
+        java.util.Map<Integer, Boolean> statusIsDoneById = new java.util.HashMap<>();
+        java.util.Map<Integer, Boolean> statusIsCancelledById = new java.util.HashMap<>();
+        for (var entry : statusNamesById.entrySet()) {
+            Integer id = entry.getKey();
+            String name = entry.getValue();
+            statusIsDoneById.put(id, StatusUtils.isDone(name));
+            statusIsCancelledById.put(id, StatusUtils.isCancelled(name));
+        }
+
+        int total = 0;
+        int done = 0;
+        for (var t : tasks) {
+            String statusName = t.getStatus();
+            Integer sid = t.getStatusId();
+            if ((statusName == null || statusName.isBlank()) && sid != null) {
+                statusName = statusNamesById.get(sid);
+            }
+
+            boolean cancelled = false;
+            boolean isDone = false;
+            if (sid != null && statusNamesById.containsKey(sid)) {
+                cancelled = statusIsCancelledById.getOrDefault(sid, false);
+                isDone = statusIsDoneById.getOrDefault(sid, false);
+            } else {
+                cancelled = StatusUtils.isCancelled(statusName);
+                isDone = StatusUtils.isDone(statusName);
+            }
+
+            log.debug("task id={} status='{}' statusId={} resolvedStatus='{}' cancelled={} done={}", t.getId(), t.getStatus(), sid, statusName, cancelled, isDone);
+            // exclude cancelled from denominator
+            if (cancelled) continue;
+            total++;
+            if (isDone) done++;
+        }
+        int progress = (total == 0) ? 0 : (int) Math.round((done * 100.0) / total);
+        log.info("computeProgressInfo: sprintId={} total={} done={} progress={}", sprintId, total, done, progress);
+        return new ProgressInfo(total, done, progress);
+    }
+
+    @Transactional
+    public ProgressInfo recalculateAndPersistProgress(Integer sprintId) {
+        if (sprintId == null) return new ProgressInfo(0,0,0);
+        var spOpt = sprintRepository.findById(sprintId);
+        if (spOpt.isEmpty()) return new ProgressInfo(0,0,0);
+        ProgressInfo info = computeProgressInfo(sprintId);
+        var sprint = spOpt.get();
+        sprint.setProgresso(info.progress);
+        sprintRepository.save(sprint);
+        log.info("recalculateAndPersistProgress: sprintId={} persistedProgress={}", sprintId, info.progress);
+        // also update project-level progress based on sprints
+        try {
+            Integer projetoId = sprint.getProjetoId();
+            if (projetoId != null) {
+                recalculateAndPersistProjectProgress(projetoId);
+            }
+        } catch (Exception e) {
+            log.warn("recalculateAndPersistProgress: failed to recalculate project progress for sprintId={}: {}", sprintId, e.getMessage());
+        }
+        return info;
+    }
+
+    // holder for project-level progress
+    public static class ProjectProgressInfo {
+        public final int totalTasks;
+        public final int doneTasks;
+        public final int progress; // 0..100
+        public ProjectProgressInfo(int totalTasks, int doneTasks, int progress) { this.totalTasks = totalTasks; this.doneTasks = doneTasks; this.progress = progress; }
+    }
+
+    @Transactional
+    // Regra de cálculo do progresso do projeto (explicação):
+    // - Unidade de cálculo: SPRINT. O progresso do projeto é calculado a partir do status
+    //   das sprints que pertencem ao projeto (não considera tarefas diretamente).
+    // - Para cada sprint do projeto usamos apenas o status da sprint (status_id -> status.nome):
+    //     * Sprints com status considerado "Cancelado" (StatusUtils.isCancelled) são EXCLUÍDAS do denominador.
+    //     * Sprints com status considerado "Concluído" (StatusUtils.isDone) são contadas como concluídas.
+    // - totalTasks no retorno = número de sprints consideradas (ou seja, sprints não canceladas).
+    // - doneTasks no retorno = número de sprints consideradas cujo status é "Concluído".
+    // - progress% = round(100 * doneTasks / totalTasks). Se totalTasks == 0, progress = 0.
+    // - O valor é persistido em projeto.progresso (INT 0..100).
+    // - Esta função é @Transactional e é chamada automaticamente após recálculo de uma sprint
+    //   (recalculateAndPersistProgress) para manter o projeto em sincronia.
+    public ProjectProgressInfo recalculateAndPersistProjectProgress(Integer projetoId) {
+        if (projetoId == null) return new ProjectProgressInfo(0,0,0);
+        var sprints = sprintRepository.findByProjetoId(projetoId);
+        if (sprints == null || sprints.isEmpty()) {
+            // persist zero progress
+            projetoRepository.findById(projetoId).ifPresent(p -> { p.setProgress(0); projetoRepository.save(p); });
+            return new ProjectProgressInfo(0,0,0);
+        }
+
+        // Calculate project progress based on sprint progress values (each sprint counts equally)
+        // collect status ids for batch lookup
+        java.util.Set<Integer> statusIds = new java.util.HashSet<>();
+        for (var s : sprints) { if (s.getStatusId() != null) statusIds.add(s.getStatusId()); }
+
+        java.util.Map<Integer, String> statusNamesById = new java.util.HashMap<>();
+        if (!statusIds.isEmpty()) {
+            statusTarefaRepository.findAllById(statusIds).forEach(st -> statusNamesById.put(st.getId(), st.getNome()));
+        }
+
+        int total = 0;
+        int done = 0;
+        for (var s : sprints) {
+            String statusName = null;
+            Integer sid = s.getStatusId();
+            if (sid != null) statusName = statusNamesById.get(sid);
+
+            // exclude cancelled sprints from denominator
+            if (StatusUtils.isCancelled(statusName)) continue;
+            total++;
+            if (StatusUtils.isDone(statusName)) done++;
+        }
+
+        int progress = (total == 0) ? 0 : (int) Math.round((done * 100.0) / total);
+
+        projetoRepository.findById(projetoId).ifPresent(p -> {
+            p.setProgress(progress);
+            projetoRepository.save(p);
+        });
+
+        log.info("recalculateAndPersistProjectProgress: projetoId={} totalSprints={} doneSprints={} progress={}", projetoId, total, done, progress);
+        return new ProjectProgressInfo(total, done, progress);
     }
 
     @Transactional
@@ -141,8 +312,8 @@ public class SprintService {
         r.setProject(projeto.getName());
         r.setStartDate(saved.getDataInicio());
         r.setEndDate(saved.getDataFim());
-        int total = tarefaRepository.countBySprintId(saved.getId());
-        int done = tarefaRepository.countBySprintIdAndStatusName(saved.getId(), "Done");
+        // compute and persist latest progress for this sprint
+        ProgressInfo info = recalculateAndPersistProgress(saved.getId());
         int blocked = 0;
         int daysDelayed = 0;
         if (saved.getDataFim() != null) {
@@ -151,14 +322,67 @@ public class SprintService {
                 daysDelayed = (int) ChronoUnit.DAYS.between(saved.getDataFim(), today);
             }
         }
-        int progress = (total == 0) ? 0 : (int) ((done * 100L) / total);
         r.setDaysDelayed(daysDelayed);
-        r.setProgress(progress);
-        r.setTotalTasks(total);
-        r.setDoneTasks(done);
+        r.setProgress(info.progress);
+        r.setTotalTasks(info.total);
+        r.setDoneTasks(info.done);
         r.setBlockedTasks(blocked);
 
         // team members from sprint_usuario
+        var sus = sprintUsuarioRepository.findByIdSprintId(saved.getId());
+        var names = new java.util.ArrayList<String>();
+        for (var su : sus) {
+            Integer uid = su.getId().getUsuarioId();
+            usuarioRepository.findById(uid).ifPresent(u -> names.add(u.getNome()));
+        }
+        r.setTeam(names);
+
+        r.setStatusId(saved.getStatusId());
+        if (saved.getStatusId() != null) {
+            statusTarefaRepository.findById(saved.getStatusId()).ifPresent(st -> r.setStatusName(st.getNome()));
+        }
+
+        return r;
+    }
+
+    @Transactional
+    public SprintResponseDTO updateStatus(Integer sprintId, Integer statusId) {
+        var spOpt = sprintRepository.findById(sprintId);
+        if (spOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Sprint não encontrada: id=" + sprintId);
+        if (statusId == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Status inválido: id=null");
+        var stOpt = statusTarefaRepository.findById(statusId);
+        if (stOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Status não encontrado: id=" + statusId);
+
+        var s = spOpt.get();
+        s.setStatusId(statusId);
+        Sprint saved = sprintRepository.save(s);
+
+        // compute progress for response and persist
+        ProgressInfo info = recalculateAndPersistProgress(saved.getId());
+
+        SprintResponseDTO r = new SprintResponseDTO();
+        r.setId(saved.getId());
+        r.setName(saved.getNome());
+        AtomicReference<String> projectName = new AtomicReference<>();
+        if (saved.getProjetoId() != null) projetoRepository.findById(saved.getProjetoId()).ifPresent(p -> projectName.set(p.getName()));
+        r.setProject(projectName.get());
+        r.setStartDate(saved.getDataInicio());
+        r.setEndDate(saved.getDataFim());
+        int blocked = 0;
+        int daysDelayed = 0;
+        if (saved.getDataFim() != null) {
+            LocalDate today = LocalDate.now();
+            if (today.isAfter(saved.getDataFim())) {
+                daysDelayed = (int) ChronoUnit.DAYS.between(saved.getDataFim(), today);
+            }
+        }
+        r.setDaysDelayed(daysDelayed);
+        r.setProgress(info.progress);
+        r.setTotalTasks(info.total);
+        r.setDoneTasks(info.done);
+        r.setBlockedTasks(blocked);
+
+        // team members
         var sus = sprintUsuarioRepository.findByIdSprintId(saved.getId());
         var names = new java.util.ArrayList<String>();
         for (var su : sus) {
@@ -225,9 +449,8 @@ public class SprintService {
         r.setProject(projeto.getName());
         r.setStartDate(saved.getDataInicio());
         r.setEndDate(saved.getDataFim());
-        // compute totals from DB where possible
-        int total = tarefaRepository.countBySprintId(saved.getId());
-        int done = tarefaRepository.countBySprintIdAndStatusName(saved.getId(), "Done");
+        // compute and persist initial progress for this sprint
+        ProgressInfo info = recalculateAndPersistProgress(saved.getId());
         int blocked = 0; // no explicit blocked flag in schema -> default 0
         int daysDelayed = 0;
         if (saved.getDataFim() != null) {
@@ -236,11 +459,10 @@ public class SprintService {
                 daysDelayed = (int) ChronoUnit.DAYS.between(saved.getDataFim(), today);
             }
         }
-        int progress = (total == 0) ? 0 : (int) ((done * 100L) / total);
         r.setDaysDelayed(dto.getDaysDelayed() == null ? daysDelayed : dto.getDaysDelayed());
-        r.setProgress(dto.getProgress() == null ? progress : dto.getProgress());
-        r.setTotalTasks(dto.getTotalTasks() == null ? total : dto.getTotalTasks());
-        r.setDoneTasks(dto.getDoneTasks() == null ? done : dto.getDoneTasks());
+        r.setProgress(dto.getProgress() == null ? info.progress : dto.getProgress());
+        r.setTotalTasks(dto.getTotalTasks() == null ? info.total : dto.getTotalTasks());
+        r.setDoneTasks(dto.getDoneTasks() == null ? info.done : dto.getDoneTasks());
         r.setBlockedTasks(dto.getBlockedTasks() == null ? blocked : dto.getBlockedTasks());
         // team: prefer provided list of ids (resolve to names), otherwise load from projeto_usuario
         if (dto.getTeam() != null && !dto.getTeam().isEmpty()) {
@@ -321,9 +543,8 @@ public class SprintService {
             if (s.getStatusId() != null) {
                 statusTarefaRepository.findById(s.getStatusId()).ifPresent(st -> r.setStatusName(st.getNome()));
             }
-            // compute totals
-            int total = (s.getId() == null) ? 0 : tarefaRepository.countBySprintId(s.getId());
-            int done = (s.getId() == null) ? 0 : tarefaRepository.countBySprintIdAndStatusName(s.getId(), "Done");
+            // compute totals (do not persist when listing)
+            ProgressInfo info = (s.getId() == null) ? new ProgressInfo(0,0,0) : computeProgressInfo(s.getId());
             int blocked = 0;
             int daysDelayed = 0;
             if (s.getDataFim() != null) {
@@ -332,11 +553,10 @@ public class SprintService {
                     daysDelayed = (int) ChronoUnit.DAYS.between(s.getDataFim(), today);
                 }
             }
-            int progress = (total == 0) ? 0 : (int) ((done * 100L) / total);
             r.setDaysDelayed(daysDelayed);
-            r.setProgress(progress);
-            r.setTotalTasks(total);
-            r.setDoneTasks(done);
+            r.setProgress(info.progress);
+            r.setTotalTasks(info.total);
+            r.setDoneTasks(info.done);
             r.setBlockedTasks(blocked);
             // team: prefer sprint members (sprint_usuario). If none, fall back to project members
             if (s.getId() != null) {

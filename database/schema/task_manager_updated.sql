@@ -116,6 +116,8 @@ data_fim TIMESTAMP,
 
 status_id INT NULL,
 
+progresso INT NOT NULL DEFAULT 0,
+
 horas_estimadas DECIMAL(10,2) DEFAULT 0.00,
 
 cor VARCHAR(20),
@@ -152,6 +154,7 @@ nome VARCHAR(100),
 data_inicio TIMESTAMP,
 data_fim TIMESTAMP,
 status_id INT NULL,
+progresso INT NOT NULL DEFAULT 0,
 
 FOREIGN KEY (projeto_id) REFERENCES projeto(id)
 );
@@ -599,3 +602,4 @@ SELECT * FROM tarefa_tag;
 SELECT * FROM anexo;
 SELECT * FROM comentario;
 SELECT * FROM historico_tarefa;
+

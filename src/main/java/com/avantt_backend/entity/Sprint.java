@@ -24,6 +24,12 @@ public class Sprint {
 
     @Column(name = "status_id")
     private Integer statusId;
+    
+    @Column(name = "progresso")
+    // Progresso da sprint (0..100). Calculado pela regra:
+    // - Contagem de tarefas concluídas / contagem de tarefas (excluindo as canceladas), arredondado para inteiro.
+    // - Atualizado por recalculateAndPersistProgress(...) em SprintService e exposto em SprintResponseDTO.progress.
+    private Integer progresso;
 
     public Sprint() {}
 
@@ -45,4 +51,7 @@ public class Sprint {
 
     public Integer getStatusId() { return statusId; }
     public void setStatusId(Integer statusId) { this.statusId = statusId; }
+
+    public Integer getProgresso() { return progresso; }
+    public void setProgresso(Integer progresso) { this.progresso = progresso; }
 }
