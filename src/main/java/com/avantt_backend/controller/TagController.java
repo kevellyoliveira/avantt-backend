@@ -44,7 +44,7 @@ public class TagController {
     }
 
     @Operation(summary = "Listar tags de tarefa", description = "Retorna os IDs das tags associadas a uma tarefa.")
-    @GetMapping(path = TAREFAS + "/{tarefaId}/tags", produces = "application/json")
+    @GetMapping(path = "/tarefas/{tarefaId}/tags", produces = "application/json")
     @ApiResponse(responseCode = "200", description = "IDs das tags da tarefa",
         content = @Content(mediaType = "application/json", examples = {
             @ExampleObject(name = "Tarefa tags example", value = "[1,8]")
