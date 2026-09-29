@@ -52,7 +52,7 @@ public class ProjetoController {
     public ResponseEntity<?> createProjeto(@RequestBody(description = "Dados do projeto a ser criado", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProjetoRequestDTO.class), examples = {
                 @ExampleObject(name = "Projeto request example", value = "{\"name\": \"Portal Corporativo\", \"description\": \"Novo portal corporativo\", \"color\": \"#FF5733\", \"statusId\": 2, \"startDate\": \"2027-07-01\", \"endDate\": \"2027-08-20\", \"team\": [1,2]}")
-            })) @Valid ProjetoRequestDTO request) {
+            })) @Valid @org.springframework.web.bind.annotation.RequestBody ProjetoRequestDTO request) {
         var created = projetoService.create(request);
         if (created == null) throw new com.avantt_backend.exception.ConflictException(MENSAGEM_ERRO_CRIAR_PROJETO_409);
         return ResponseEntity.status(201).body(created);
@@ -77,7 +77,7 @@ public class ProjetoController {
     public ResponseEntity<?> updateProjeto(@PathVariable Integer id, @RequestBody(description = "Dados para atualizar o projeto", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProjetoRequestDTO.class), examples = {
                 @ExampleObject(name = "Projeto update request example", value = "{\"name\": \"Portal Corporativo - v2\", \"description\": \"Ajustes\", \"statusId\": 2, \"startDate\": \"2027-07-02\", \"endDate\": \"2027-08-21\"}")
-            })) @Valid ProjetoRequestDTO request) {
+            })) ProjetoRequestDTO request) {
         var updated = projetoService.update(id, request);
         return ResponseEntity.ok(updated);
     }

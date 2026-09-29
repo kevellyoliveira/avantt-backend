@@ -85,7 +85,7 @@ public class UsuarioController {
     public ResponseEntity<?> patchUsuario(@PathVariable Integer id, @RequestBody(description = "Dados para atualizar o usuário (parciais permitidas)", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.UsuarioRequestDTO.class), examples = {
                 @ExampleObject(name = "Usuario patch example", value = "{\"name\": \"Bruno H. Lima\", \"color\": \"#4B7BF5\"}")
-            })) @Valid @org.springframework.web.bind.annotation.RequestBody UsuarioRequestDTO request) {
+            })) @org.springframework.web.bind.annotation.RequestBody UsuarioRequestDTO request) {
         UsuarioResponseDTO updated = usuarioService.update(id, request);
         if (updated == null) throw new com.avantt_backend.exception.ResourceNotFoundException(MENSAGEM_ERRO_EDITAR_USUARIO_404);
         return ResponseEntity.status(200).body(updated);
