@@ -14,5 +14,6 @@ public final class ApiPaths {
     public static final String SPRINTS = API + "/sprints";
     public static final String PROJETOS = API + "/projetos";
     public static final String USUARIOS = API + "/usuarios";
+    public static final String ESTIMATIVAS = API + "/estimativas";
 
 }
