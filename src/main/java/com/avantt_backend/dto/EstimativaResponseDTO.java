@@ -17,6 +17,7 @@ public class EstimativaResponseDTO {
     private int melhorPessoas;
     private int melhorSprints;
     private double melhorTempo;
+    private String melhorMensagem; // mensagem explicativa sobre o melhorTempo (unidade/semântica)
 
     public EstimativaResponseDTO() {
     }
@@ -83,5 +84,13 @@ public class EstimativaResponseDTO {
 
     public void setMelhorTempo(double melhorTempo) {
         this.melhorTempo = melhorTempo;
+    }
+
+    public String getMelhorMensagem() {
+        return melhorMensagem;
+    }
+
+    public void setMelhorMensagem(String melhorMensagem) {
+        this.melhorMensagem = melhorMensagem;
     }
 }

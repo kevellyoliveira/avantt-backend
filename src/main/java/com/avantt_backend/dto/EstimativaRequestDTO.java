@@ -13,8 +13,11 @@ public class EstimativaRequestDTO {
     private Integer pessoas;
 
     @NotNull
-    @Min(value = 15, message = "Quantidade mínima de sprints é 15")
+    @Min(1)
     private Integer sprints;
+
+    @Min(value = 15, message = "Quantidade mínima de dias por sprint é 15")
+    private Integer quantidadeDiasSprint = 15; // em dias, padrão 15
 
     private Integer prazo; // opcional, em minutos
 
@@ -47,6 +50,14 @@ public class EstimativaRequestDTO {
 
     public void setSprints(Integer sprints) {
         this.sprints = sprints;
+    }
+
+    public Integer getQuantidadeDiasSprint() {
+        return quantidadeDiasSprint;
+    }
+
+    public void setQuantidadeDiasSprint(Integer quantidadeDiasSprint) {
+        this.quantidadeDiasSprint = quantidadeDiasSprint;
     }
 
     public Integer getPrazo() {
