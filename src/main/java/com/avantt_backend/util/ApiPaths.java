@@ -18,5 +18,6 @@ public final class ApiPaths {
     // kept for backward compatibility (deprecated)
     public static final String STATUS_TAREFAS = API + "/status-tarefas";
     public static final String USUARIOS = API + "/usuarios";
+    public static final String ESTIMATIVAS = API + "/estimativas";
 
 }
