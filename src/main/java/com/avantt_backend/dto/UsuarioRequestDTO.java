@@ -2,6 +2,7 @@ package com.avantt_backend.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
@@ -15,6 +16,8 @@ public class UsuarioRequestDTO {
     private String email;
 
     private String role;
+    @NotNull(message = "perfilId é obrigatório")
+    private Integer perfilId;
     private String avatar;
     private String color;
     private List<String> projects;
@@ -31,6 +34,9 @@ public class UsuarioRequestDTO {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    public Integer getPerfilId() { return perfilId; }
+    public void setPerfilId(Integer perfilId) { this.perfilId = perfilId; }
 
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }

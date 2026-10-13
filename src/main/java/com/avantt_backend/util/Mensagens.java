@@ -9,6 +9,11 @@ public class Mensagens {
 
     public static final String MENSAGEM_ERRO_INTERNO_500 = "Ocorreu um erro interno ao processar a solicitação.";
 
+    // Erros genéricos para respostas de validação/JSON
+    public static final String MENSAGEM_CAMPOS_INVALIDOS = "Campos inválidos";
+    public static final String MENSAGEM_PARAMETROS_INVALIDOS = "Parâmetros inválidos";
+    public static final String MENSAGEM_JSON_MALFORMED = "Request body is invalid or malformed";
+
     // PROJETOS
     public static final String MENSAGEM_PROJETO_CRIADO_201 = "Projeto criado com sucesso.";
     public static final String MENSAGEM_ERRO_CRIAR_PROJETO_400 = "Não foi possível criar o projeto.";
@@ -38,6 +43,13 @@ public class Mensagens {
     public static final String MENSAGEM_CREDENCIAIS_INVALIDAS_401 = "Credenciais inválidas";
     public static final String MENSAGEM_ERRO_EMAIL_404 = "Email não encontrado";
     public static final String MENSAGEM_ERRO_TOKEN_400 = "Token inválido ou expirado";
+
+    // Autenticação
+    public static final String MENSAGEM_TOKEN_AUSENTE = "Token ausente";
+    public static final String MENSAGEM_TOKEN_INVALIDO = "Token inválido";
+
+    // Sprint / Projeto
+    public static final String MENSAGEM_USUARIO_NAO_PERTENCE_PROJETO_SPRINT = "Usuário não pertence ao projeto da sprint";
 
 
 }
