@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
-
-import java.time.LocalDateTime;
+import com.avantt_backend.util.Mensagens;
+import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -50,7 +50,12 @@ public class EstimativaController {
         }
 
         if (!errors.isEmpty()) {
-            ErrorResponse err = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Limites excedidos", LocalDateTime.now(), errors);
+            var details = errors.entrySet().stream()
+                    .map(e -> new ErrorResponse.FieldError(e.getKey(), e.getValue()))
+                    .collect(Collectors.toList());
+            ErrorResponse err = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Limites excedidos", Mensagens.MENSAGEM_CAMPOS_INVALIDOS);
+            err.setDetails(details);
+            err.setCode("VALIDATION_ERROR");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
         }
 

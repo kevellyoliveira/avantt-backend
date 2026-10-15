@@ -3,6 +3,8 @@ package com.avantt_backend.exception;
 import com.avantt_backend.dto.ErrorResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -22,10 +24,11 @@ class GlobalExceptionHandlerTest {
         when(ex.getBindingResult()).thenReturn(br);
 
         GlobalExceptionHandler h = new GlobalExceptionHandler();
-        ResponseEntity<ErrorResponse> r = h.handleValidationException(ex);
+        ResponseEntity<Object> r = h.handleMethodArgumentNotValid(ex, new HttpHeaders(), HttpStatus.BAD_REQUEST, null);
         assertEquals(400, r.getStatusCode().value());
-        ErrorResponse body = r.getBody();
+        ErrorResponse body = (ErrorResponse) r.getBody();
         assertNotNull(body);
-        assertTrue(body.getErrors().containsKey("field"));
+        assertNotNull(body.getDetails());
+        assertTrue(body.getDetails().stream().anyMatch(fe -> "field".equals(fe.getField())));
     }
 }
