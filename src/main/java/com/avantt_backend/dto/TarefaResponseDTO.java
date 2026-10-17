@@ -8,11 +8,15 @@ public class TarefaResponseDTO {
     private String id;
     private String title;
     private String project;
+    private Integer projectId;
     private String sprint;
+    private Integer sprintId;
     private String assignee;
+    private Integer assigneeId;
     private String avatar;
     private String avatarColor;
     private String priority;
+    private Integer priorityId;
     private String status;
     private Integer statusId;
     private String statusName;
@@ -38,12 +42,18 @@ public class TarefaResponseDTO {
 
     public String getProject() { return project; }
     public void setProject(String project) { this.project = project; }
+    public Integer getProjectId() { return projectId; }
+    public void setProjectId(Integer projectId) { this.projectId = projectId; }
 
     public String getSprint() { return sprint; }
     public void setSprint(String sprint) { this.sprint = sprint; }
+    public Integer getSprintId() { return sprintId; }
+    public void setSprintId(Integer sprintId) { this.sprintId = sprintId; }
 
     public String getAssignee() { return assignee; }
     public void setAssignee(String assignee) { this.assignee = assignee; }
+    public Integer getAssigneeId() { return assigneeId; }
+    public void setAssigneeId(Integer assigneeId) { this.assigneeId = assigneeId; }
 
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
@@ -53,6 +63,8 @@ public class TarefaResponseDTO {
 
     public String getPriority() { return priority; }
     public void setPriority(String priority) { this.priority = priority; }
+    public Integer getPriorityId() { return priorityId; }
+    public void setPriorityId(Integer priorityId) { this.priorityId = priorityId; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

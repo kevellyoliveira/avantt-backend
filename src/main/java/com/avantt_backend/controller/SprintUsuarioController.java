@@ -22,6 +22,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import jakarta.servlet.http.HttpServletRequest;
+import com.avantt_backend.config.AuthInterceptor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,15 +41,18 @@ public class SprintUsuarioController {
     private final ProjetoUsuarioRepository projetoUsuarioRepository;
     private final SprintRepository sprintRepository;
     private final UsuarioRepository usuarioRepository;
+    private final com.avantt_backend.repository.ProjetoRepository projetoRepository;
 
     public SprintUsuarioController(SprintUsuarioRepository sprintUsuarioRepository,
                                    ProjetoUsuarioRepository projetoUsuarioRepository,
                                    SprintRepository sprintRepository,
-                                   UsuarioRepository usuarioRepository) {
+                                   UsuarioRepository usuarioRepository,
+                                   com.avantt_backend.repository.ProjetoRepository projetoRepository) {
         this.sprintUsuarioRepository = sprintUsuarioRepository;
         this.projetoUsuarioRepository = projetoUsuarioRepository;
         this.sprintRepository = sprintRepository;
         this.usuarioRepository = usuarioRepository;
+        this.projetoRepository = projetoRepository;
     }
 
     @Operation(summary = "Associar usuário à sprint", description = "Associa um usuário à sprint (usuário deve pertencer ao projeto do sprint).")
@@ -58,14 +64,22 @@ public class SprintUsuarioController {
     public ResponseEntity<?> addUserToSprint(@PathVariable Integer sprintId, @RequestBody(description = "Corpo: { \"usuarioId\": &lt;id&gt; }", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.SprintUsuarioRequestDTO.class), examples = {
                 @ExampleObject(name = "Add sprint user request example", value = "{\"usuarioId\": 3}")
-            })) @Valid @org.springframework.web.bind.annotation.RequestBody com.avantt_backend.dto.SprintUsuarioRequestDTO body) {
+            })) @Valid @org.springframework.web.bind.annotation.RequestBody com.avantt_backend.dto.SprintUsuarioRequestDTO body,
+            HttpServletRequest request) {
         Integer usuarioId = body.getUsuarioId();
 
         // verify sprint exists
         Sprint s = sprintRepository.findById(sprintId).orElseThrow(() -> new com.avantt_backend.exception.ResourceNotFoundException("Sprint não encontrada: id=" + sprintId));
+        Usuario authenticated = (Usuario) request.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        var project = projetoRepository.findById(s.getProjetoId())
+                .orElseThrow(() -> new com.avantt_backend.exception.ResourceNotFoundException("Projeto não encontrado: id=" + s.getProjetoId()));
+        if (!authenticated.getOrganizacaoId().equals(project.getOrganizacaoId())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Sprint não encontrada: id=" + sprintId);
+        }
 
         // verify user exists
         Usuario u = usuarioRepository.findById(usuarioId).orElseThrow(() -> new com.avantt_backend.exception.ResourceNotFoundException("Usuario não encontrado: id=" + usuarioId));
+        if (authenticated.getOrganizacaoId() == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Usuário sem organização");
 
         // verify user belongs to the project of the sprint
         Integer projetoId = s.getProjetoId();
@@ -81,6 +95,25 @@ public class SprintUsuarioController {
         }
 
         return ResponseEntity.status(201).body("Associado");
+    }
+
+    @DeleteMapping(path = "/{sprintId}/usuarios/{usuarioId}")
+    public ResponseEntity<?> removeUserFromSprint(@PathVariable Integer sprintId, @PathVariable Integer usuarioId,
+                                                   HttpServletRequest request) {
+        Sprint s = sprintRepository.findById(sprintId)
+                .orElseThrow(() -> new com.avantt_backend.exception.ResourceNotFoundException("Sprint não encontrada: id=" + sprintId));
+        Usuario authenticated = (Usuario) request.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        Usuario user = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new com.avantt_backend.exception.ResourceNotFoundException("Usuario não encontrado: id=" + usuarioId));
+        if (!authenticated.getOrganizacaoId().equals(user.getOrganizacaoId())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Usuário não encontrado");
+        }
+        var projectMembers = projetoUsuarioRepository.findByIdProjetoId(s.getProjetoId());
+        if (projectMembers.stream().noneMatch(link -> link.getId().getUsuarioId().equals(usuarioId))) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário não pertence ao projeto da sprint");
+        }
+        sprintUsuarioRepository.deleteById(new SprintUsuarioId(sprintId, usuarioId));
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Listar usuários da sprint", description = "Lista os usuários associados à sprint especificada.")

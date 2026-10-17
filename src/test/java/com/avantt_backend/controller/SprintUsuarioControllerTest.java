@@ -7,11 +7,13 @@ import com.avantt_backend.entity.Sprint;
 import com.avantt_backend.entity.SprintUsuario;
 import com.avantt_backend.entity.SprintUsuarioId;
 import com.avantt_backend.entity.Usuario;
+import com.avantt_backend.entity.Projeto;
 import com.avantt_backend.exception.GlobalExceptionHandler;
 import com.avantt_backend.repository.ProjetoUsuarioRepository;
 import com.avantt_backend.repository.SprintRepository;
 import com.avantt_backend.repository.SprintUsuarioRepository;
 import com.avantt_backend.repository.UsuarioRepository;
+import com.avantt_backend.config.AuthInterceptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +53,8 @@ class SprintUsuarioControllerTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+    @Mock
+    private com.avantt_backend.repository.ProjetoRepository projetoRepository;
 
     @InjectMocks
     private SprintUsuarioController controller;
@@ -58,6 +62,7 @@ class SprintUsuarioControllerTest {
     @BeforeEach
     void setup() {
         this.mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .defaultRequest(get("/").requestAttr(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE, authenticatedUser()))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -72,6 +77,8 @@ class SprintUsuarioControllerTest {
 
         Sprint s = new Sprint(); s.setId(sprintId); s.setProjetoId(10);
         when(sprintRepository.findById(sprintId)).thenReturn(Optional.of(s));
+        Projeto project = new Projeto(); project.setId(10); project.setOrganizacaoId(7);
+        when(projetoRepository.findById(10)).thenReturn(Optional.of(project));
 
         Usuario u = new Usuario(); u.setId(usuarioId); u.setNome("Joao");
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(u));
@@ -110,6 +117,8 @@ class SprintUsuarioControllerTest {
         SprintUsuarioRequestDTO body = new SprintUsuarioRequestDTO(); body.setUsuarioId(usuarioId);
         Sprint s = new Sprint(); s.setId(sprintId); s.setProjetoId(10);
         when(sprintRepository.findById(sprintId)).thenReturn(Optional.of(s));
+        Projeto project = new Projeto(); project.setId(10); project.setOrganizacaoId(7);
+        when(projetoRepository.findById(10)).thenReturn(Optional.of(project));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.empty());
 
         mockMvc.perform(post("/api/sprints/" + sprintId + "/usuarios")
@@ -126,6 +135,8 @@ class SprintUsuarioControllerTest {
         SprintUsuarioRequestDTO body = new SprintUsuarioRequestDTO(); body.setUsuarioId(usuarioId);
         Sprint s = new Sprint(); s.setId(sprintId); s.setProjetoId(10);
         when(sprintRepository.findById(sprintId)).thenReturn(Optional.of(s));
+        Projeto project = new Projeto(); project.setId(10); project.setOrganizacaoId(7);
+        when(projetoRepository.findById(10)).thenReturn(Optional.of(project));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(new Usuario(){ { setId(usuarioId); setNome("X"); } }));
         when(projetoUsuarioRepository.findByIdProjetoId(10)).thenReturn(List.of()); // user not in project
 
@@ -149,5 +160,12 @@ class SprintUsuarioControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(2))
                 .andExpect(jsonPath("$[0].nome").value("Bruno"));
+    }
+
+    private Usuario authenticatedUser() {
+        Usuario user = new Usuario();
+        user.setId(1);
+        user.setOrganizacaoId(7);
+        return user;
     }
 }

@@ -15,6 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import com.avantt_backend.config.AuthInterceptor;
+import com.avantt_backend.entity.Usuario;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
@@ -48,6 +50,7 @@ class TarefaControllerTest {
         org.springframework.http.converter.json.MappingJackson2HttpMessageConverter converter =
                 new org.springframework.http.converter.json.MappingJackson2HttpMessageConverter(objectMapper);
         this.mockMvc = MockMvcBuilders.standaloneSetup(tarefaController)
+                .defaultRequest(get("/").requestAttr(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE, authenticatedUser()))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .setMessageConverters(converter)
@@ -60,7 +63,7 @@ class TarefaControllerTest {
         req.setTitle("Fix"); req.setProjectId(1); req.setSprintId(2); req.setStatusId(1); req.setPlannedEnd(LocalDate.now().plusDays(5));
 
         TarefaResponseDTO resp = new TarefaResponseDTO(); resp.setId("20"); resp.setTitle("Fix");
-        when(tarefaService.create(any(TarefaRequestDTO.class))).thenReturn(resp);
+        when(tarefaService.create(any(TarefaRequestDTO.class), eq(7))).thenReturn(resp);
 
         mockMvc.perform(post("/api/tarefas")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -68,7 +71,7 @@ class TarefaControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value("20"));
 
-        verify(tarefaService).create(any(TarefaRequestDTO.class));
+        verify(tarefaService).create(any(TarefaRequestDTO.class), eq(7));
     }
 
     @Test
@@ -88,26 +91,35 @@ class TarefaControllerTest {
     @Test
     void patchAssignee_shouldReturn200() throws Exception {
         String json = "{\"assigneeId\": 3}";
-        when(tarefaService.updateAssignee(eq(5), eq(3))).thenReturn(new TarefaResponseDTO());
+        when(tarefaService.updateAssignee(eq(5), eq(3), eq(7))).thenReturn(new TarefaResponseDTO());
 
         mockMvc.perform(patch("/api/tarefas/5/assignee")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(json))
+                .content(json)
+                .requestAttr(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE, authenticatedUser()))
                 .andExpect(status().isOk());
 
-        verify(tarefaService).updateAssignee(eq(5), eq(3));
+        verify(tarefaService).updateAssignee(eq(5), eq(3), eq(7));
     }
 
     @Test
     void getList_shouldReturn200() throws Exception {
-        TarefaResponseDTO t1 = new TarefaResponseDTO(); t1.setId("1"); t1.setTitle("A");
-        TarefaResponseDTO t2 = new TarefaResponseDTO(); t2.setId("2"); t2.setTitle("B");
+        TarefaResponseDTO t1 = new TarefaResponseDTO(); t1.setId("1"); t1.setTitle("A"); t1.setProjectId(10);
+        TarefaResponseDTO t2 = new TarefaResponseDTO(); t2.setId("2"); t2.setTitle("B"); t2.setProjectId(10);
         when(tarefaService.listAll(any(), any(), any())).thenReturn(List.of(t1,t2));
+        when(tarefaService.belongsToOrganization(any(), eq(7))).thenReturn(true);
 
         mockMvc.perform(get("/api/tarefas").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)));
 
         verify(tarefaService).listAll(null, null, null);
+    }
+
+    private Usuario authenticatedUser() {
+        Usuario user = new Usuario();
+        user.setId(1);
+        user.setOrganizacaoId(7);
+        return user;
     }
 }

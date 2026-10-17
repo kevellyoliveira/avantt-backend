@@ -10,8 +10,11 @@ public class UsuarioResponseDTO {
     private String role;
     private TasksDTO tasks;
     private List<String> projects;
+    private List<String> projectIds;
     private int workload;
     private String email;
+    private Integer organizationId;
+    private String organizationName;
 
     public UsuarioResponseDTO() {}
 
@@ -37,9 +40,18 @@ public class UsuarioResponseDTO {
     public List<String> getProjects() { return projects; }
     public void setProjects(List<String> projects) { this.projects = projects; }
 
+    public List<String> getProjectIds() { return projectIds; }
+    public void setProjectIds(List<String> projectIds) { this.projectIds = projectIds; }
+
     public int getWorkload() { return workload; }
     public void setWorkload(int workload) { this.workload = workload; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public Integer getOrganizationId() { return organizationId; }
+    public void setOrganizationId(Integer organizationId) { this.organizationId = organizationId; }
+
+    public String getOrganizationName() { return organizationName; }
+    public void setOrganizationName(String organizationName) { this.organizationName = organizationName; }
 }

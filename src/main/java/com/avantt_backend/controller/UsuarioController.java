@@ -21,6 +21,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import jakarta.servlet.http.HttpServletRequest;
+import com.avantt_backend.entity.Usuario;
+import com.avantt_backend.config.AuthInterceptor;
 
 import java.util.List;
 
@@ -51,8 +54,10 @@ public class UsuarioController {
     public ResponseEntity<?> createUsuario(@RequestBody(description = "Dados do usuário a ser criado", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.UsuarioRequestDTO.class), examples = {
                 @ExampleObject(name = "Usuario create example", value = "{\"name\": \"Bruno Lima\", \"email\": \"bruno.lima@email.com\", \"perfilId\": 2, \"role\": \"Colaborador\"}")
-            })) @Valid @org.springframework.web.bind.annotation.RequestBody UsuarioRequestDTO request) {
-        UsuarioResponseDTO response = usuarioService.create(request);
+            })) @Valid @org.springframework.web.bind.annotation.RequestBody UsuarioRequestDTO request,
+            HttpServletRequest httpRequest) {
+        Usuario authenticatedUser = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        UsuarioResponseDTO response = usuarioService.create(request, authenticatedUser.getOrganizacaoId());
         if (response == null) throw new com.avantt_backend.exception.ConflictException(MENSAGEM_ERRO_CRIAR_USUARIO_409);
         return ResponseEntity.status(201).body(response);
     }
@@ -67,8 +72,11 @@ public class UsuarioController {
                      content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping(path = USUARIOS, produces = "application/json")
-    public ResponseEntity<?> listUsuarios(@RequestParam(value = "projetoId", required = false) Integer projetoId) {
-        List<UsuarioResponseDTO> list = usuarioService.listAll(projetoId);
+    public ResponseEntity<?> listUsuarios(@RequestParam(value = "projetoId", required = false) Integer projetoId,
+                                          HttpServletRequest request) {
+        Usuario authenticatedUser = (Usuario) request.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        if (authenticatedUser.getOrganizacaoId() == null) return ResponseEntity.ok(List.of());
+        List<UsuarioResponseDTO> list = usuarioService.listAll(projetoId, authenticatedUser.getOrganizacaoId());
         return ResponseEntity.ok(list);
     }
 
@@ -85,8 +93,10 @@ public class UsuarioController {
     public ResponseEntity<?> patchUsuario(@PathVariable Integer id, @RequestBody(description = "Dados para atualizar o usuário (parciais permitidas)", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.UsuarioRequestDTO.class), examples = {
                 @ExampleObject(name = "Usuario patch example", value = "{\"name\": \"Bruno H. Lima\", \"color\": \"#4B7BF5\"}")
-            })) @org.springframework.web.bind.annotation.RequestBody UsuarioRequestDTO request) {
-        UsuarioResponseDTO updated = usuarioService.update(id, request);
+            }))             @org.springframework.web.bind.annotation.RequestBody UsuarioRequestDTO request,
+            HttpServletRequest httpRequest) {
+        Usuario authenticatedUser = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        UsuarioResponseDTO updated = usuarioService.update(id, request, authenticatedUser.getOrganizacaoId());
         if (updated == null) throw new com.avantt_backend.exception.ResourceNotFoundException(MENSAGEM_ERRO_EDITAR_USUARIO_404);
         return ResponseEntity.status(200).body(updated);
     }
