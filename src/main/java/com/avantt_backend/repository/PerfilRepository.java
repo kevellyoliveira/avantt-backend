@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PerfilRepository extends JpaRepository<Perfil, Integer> {
+    java.util.Optional<Perfil> findByNomeIgnoreCase(String nome);
 }

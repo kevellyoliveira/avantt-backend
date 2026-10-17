@@ -3,7 +3,7 @@ package com.avantt_backend.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "status")
+@Table(name = "status_tarefa")
 public class Status {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

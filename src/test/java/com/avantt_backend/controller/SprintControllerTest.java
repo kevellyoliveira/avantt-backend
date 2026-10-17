@@ -16,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import com.avantt_backend.config.AuthInterceptor;
+import com.avantt_backend.entity.Usuario;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.time.LocalDate;
@@ -51,6 +53,7 @@ class SprintControllerTest {
         org.springframework.http.converter.json.MappingJackson2HttpMessageConverter converter =
                 new org.springframework.http.converter.json.MappingJackson2HttpMessageConverter(objectMapper);
         this.mockMvc = MockMvcBuilders.standaloneSetup(sprintController)
+                .defaultRequest(get("/").requestAttr(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE, authenticatedUser()))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .setMessageConverters(converter)
@@ -69,7 +72,7 @@ class SprintControllerTest {
         SprintResponseDTO resp = new SprintResponseDTO();
         resp.setId(10); resp.setName("S1");
 
-        when(sprintService.create(any(SprintRequestDTO.class))).thenReturn(resp);
+        when(sprintService.create(any(SprintRequestDTO.class), eq(7))).thenReturn(resp);
 
         mockMvc.perform(post("/api/sprints")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -77,7 +80,7 @@ class SprintControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(10));
 
-        verify(sprintService).create(any(SprintRequestDTO.class));
+        verify(sprintService).create(any(SprintRequestDTO.class), eq(7));
     }
 
     @Test
@@ -106,7 +109,7 @@ class SprintControllerTest {
         SprintResponseDTO resp = new SprintResponseDTO();
         resp.setId(5); resp.setName("Updated");
 
-        when(sprintService.update(eq(5), any(SprintRequestDTO.class))).thenReturn(resp);
+        when(sprintService.update(eq(5), any(SprintRequestDTO.class), eq(7))).thenReturn(resp);
 
         mockMvc.perform(put("/api/sprints/5")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -114,7 +117,7 @@ class SprintControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(5));
 
-        verify(sprintService).update(eq(5), any(SprintRequestDTO.class));
+        verify(sprintService).update(eq(5), any(SprintRequestDTO.class), eq(7));
     }
 
     @Test
@@ -126,5 +129,12 @@ class SprintControllerTest {
                 .andExpect(jsonPath("$.progress").value(33));
 
         verify(sprintService).recalculateAndPersistProgress(7);
+    }
+
+    private Usuario authenticatedUser() {
+        Usuario user = new Usuario();
+        user.setId(1);
+        user.setOrganizacaoId(7);
+        return user;
     }
 }
