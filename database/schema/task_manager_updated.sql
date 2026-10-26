@@ -339,17 +339,17 @@ email_contato
 ) VALUES
 (
 'TechNova Soluções',
-'12.345.678/0001-90',
+'12345678000190',
 'contato@technova.com.br'
 ),
 (
 'Inova Digital',
-'23.456.789/0001-01',
+'23456789000101',
 'contato@inovadigital.com.br'
 ),
 (
 'BlueSoft Tecnologia',
-'34.567.890/0001-12',
+'34567890000112',
 'contato@bluesoft.com.br'
 );
 

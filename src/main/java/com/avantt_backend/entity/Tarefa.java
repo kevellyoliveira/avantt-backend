@@ -1,6 +1,8 @@
 package com.avantt_backend.entity;
 
 import jakarta.persistence.*;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -10,9 +12,10 @@ public class Tarefa {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @Column(name = "titulo", nullable = false)
     private String titulo;
-    // coluna nome (NOT NULL) no banco - insistir em gravar
-    @Column(name = "nome", nullable = false)
+
+    @Transient
     private String nome;
 
     // foreign keys
@@ -22,19 +25,25 @@ public class Tarefa {
     @Column(name = "sprint_id")
     private Integer sprintId;
 
+    @Transient
     private String project;
 
+    @Transient
     private String sprint;
 
-    @Column(name = "atribuido_para")
+    @Transient
     private Integer assignee;
 
+    @Transient
     private String avatar;
 
+    @Transient
     private String avatarColor;
 
+    @Transient
     private String priority;
 
+    @Transient
     private String status;
 
     @Column(name = "prioridade_id")
@@ -43,15 +52,22 @@ public class Tarefa {
     @Column(name = "status_id")
     private Integer statusId;
 
+    @Transient
     private Integer daysDelayed;
 
+    @Column(name = "data_fim")
     private LocalDate plannedEnd;
 
+    @Transient
     private Integer estimatedHours;
 
+    @Column(name = "horas_estimadas", precision = 10, scale = 2)
+    private BigDecimal estimatedHoursValue;
+
+    @Transient
     private String blockedBy;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String tags; // JSON array
 
     @Column(name = "descricao", columnDefinition = "TEXT")
@@ -119,4 +135,22 @@ public class Tarefa {
 
     public String getDescricao() { return descricao; }
     public void setDescricao(String descricao) { this.descricao = descricao; }
+
+    @PrePersist
+    @PreUpdate
+    private void synchronizeTitle() {
+        if (titulo == null) {
+            titulo = nome;
+        }
+        nome = titulo;
+        if (estimatedHours != null) {
+            estimatedHoursValue = BigDecimal.valueOf(estimatedHours);
+        }
+    }
+
+    @PostLoad
+    private void synchronizeTitleAfterLoad() {
+        nome = titulo;
+        estimatedHours = estimatedHoursValue == null ? null : estimatedHoursValue.intValue();
+    }
 }

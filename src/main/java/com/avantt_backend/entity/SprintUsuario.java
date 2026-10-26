@@ -9,7 +9,7 @@ public class SprintUsuario {
     @EmbeddedId
     private SprintUsuarioId id;
 
-    @Column(name = "papel")
+    @Transient
     private String papel;
 
     public SprintUsuario() {}

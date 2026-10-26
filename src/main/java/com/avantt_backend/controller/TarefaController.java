@@ -22,6 +22,9 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import jakarta.servlet.http.HttpServletRequest;
+import com.avantt_backend.config.AuthInterceptor;
+import com.avantt_backend.entity.Usuario;
 
 import java.util.List;
 
@@ -58,8 +61,10 @@ public class TarefaController {
                     @ExampleObject(name = "Tarefa request example", value = "{\"title\":\"Corrigir bug do login\",\"projectId\":1,\"sprintId\":3,\"assigneeId\":2,\"statusId\":2,\"plannedEnd\":\"2027-08-15\",\"priority\":\"alta\",\"tagIds\":[1,3],\"description\":\"Corrigir problema X\"}")
                 })
             )
-            @Valid @org.springframework.web.bind.annotation.RequestBody TarefaRequestDTO request) {
-        var created = tarefaService.create(request);
+            @Valid @org.springframework.web.bind.annotation.RequestBody TarefaRequestDTO request,
+            HttpServletRequest httpRequest) {
+        Usuario authenticated = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        var created = tarefaService.create(request, authenticated.getOrganizacaoId());
         return ResponseEntity.status(201).body(created);
     }
 
@@ -75,8 +80,13 @@ public class TarefaController {
             @Parameter(description = "ID da sprint para filtrar tarefas", required = false)
             @RequestParam(value = "sprintId", required = false) String sprintId,
             @Parameter(description = "Status das tarefas para filtrar", required = false)
-            @RequestParam(value = "status", required = false) String status) {
+            @RequestParam(value = "status", required = false) String status,
+            HttpServletRequest httpRequest) {
+        Usuario authenticated = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
         List<TarefaResponseDTO> list = tarefaService.listAll(projetoId, sprintId, status);
+        if (authenticated.getOrganizacaoId() == null) return ResponseEntity.ok(List.of());
+        list = list.stream().filter(task -> task.getProjectId() != null
+                && tarefaService.belongsToOrganization(task.getProjectId(), authenticated.getOrganizacaoId())).toList();
         return ResponseEntity.ok(list);
     }
 
@@ -89,9 +99,11 @@ public class TarefaController {
     public ResponseEntity<?> patchAssignee(@PathVariable Integer id, @RequestBody(description = "Corpo: { \"assigneeId\": &lt;id&gt; } (use null para remover)", required = true,
             content = @Content(mediaType = "application/json", examples = {
                 @ExampleObject(name = "Patch assignee example", value = "{\"assigneeId\": 2}")
-            })) @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Integer> body) {
+            })) @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Integer> body,
+            HttpServletRequest httpRequest) {
         Integer assigneeId = body.get("assigneeId");
-        var updated = tarefaService.updateAssignee(id, assigneeId);
+        Usuario authenticated = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        var updated = tarefaService.updateAssignee(id, assigneeId, authenticated.getOrganizacaoId());
         return ResponseEntity.ok(updated);
     }
 
@@ -101,8 +113,9 @@ public class TarefaController {
         content = @Content(mediaType = "application/json", examples = {
             @ExampleObject(name = "Users for task example", value = "[{\"id\":2,\"nome\":\"Bruno Henrique Lima\",\"email\":\"bruno.lima@email.com\"}]")
         }))
-    public ResponseEntity<?> listUsersForTask(@PathVariable Integer id) {
-        var list = tarefaService.listUsersForTask(id);
+    public ResponseEntity<?> listUsersForTask(@PathVariable Integer id, HttpServletRequest httpRequest) {
+        Usuario authenticated = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        var list = tarefaService.listUsersForTask(id, authenticated.getOrganizacaoId());
         return ResponseEntity.ok(list);
     }
 
@@ -128,8 +141,10 @@ public class TarefaController {
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.TarefaRequestDTO.class), examples = {
                     @ExampleObject(name = "Tarefa update request example", value = "{\"title\":\"Corrigir bug do login\",\"projectId\":1,\"sprintId\":3,\"assigneeId\":2,\"statusId\":2,\"plannedEnd\":\"2027-08-15\",\"priority\":\"alta\",\"tagIds\":[1,3],\"description\":\"Corrigir problema X\"}")
                 }))
-            @Valid @org.springframework.web.bind.annotation.RequestBody TarefaRequestDTO request) {
-        var updated = tarefaService.update(id, request);
+            @Valid             @org.springframework.web.bind.annotation.RequestBody TarefaRequestDTO request,
+            HttpServletRequest httpRequest) {
+        Usuario authenticated = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        var updated = tarefaService.update(id, request, authenticated.getOrganizacaoId());
         return ResponseEntity.ok(updated);
     }
 
@@ -142,9 +157,11 @@ public class TarefaController {
     public ResponseEntity<?> patchPriority(@PathVariable Integer id, @RequestBody(description = "Corpo: { \"prioridadeId\": <id> } — enviar null para remover a prioridade", required = true,
             content = @Content(mediaType = "application/json", examples = {
                     @ExampleObject(name = "Patch prioridade example", value = "{\"prioridadeId\": 2}")
-            })) @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Integer> body) {
+            })) @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Integer> body,
+            HttpServletRequest httpRequest) {
         Integer prioridadeId = body.get("prioridadeId");
-        var updated = tarefaService.updatePriority(id, prioridadeId);
+        Usuario authenticated = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        var updated = tarefaService.updatePriority(id, prioridadeId, authenticated.getOrganizacaoId());
         return ResponseEntity.ok(updated);
     }
 
@@ -157,9 +174,11 @@ public class TarefaController {
     public ResponseEntity<?> patchStatus(@PathVariable Integer id, @RequestBody(description = "Corpo: { \"statusId\": <id> } - campo statusId é obrigatório", required = true,
             content = @Content(mediaType = "application/json", examples = {
                     @ExampleObject(name = "Patch status example", value = "{\"statusId\": 3}")
-            })) @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Integer> body) {
+            })) @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Integer> body,
+            HttpServletRequest httpRequest) {
         Integer statusId = body.get("statusId");
-        var updated = tarefaService.updateStatus(id, statusId);
+        Usuario authenticated = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        var updated = tarefaService.updateStatus(id, statusId, authenticated.getOrganizacaoId());
         return ResponseEntity.ok(updated);
     }
 }

@@ -17,6 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import com.avantt_backend.config.AuthInterceptor;
+import com.avantt_backend.entity.Usuario;
 import java.util.Arrays;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -49,6 +51,7 @@ class UsuarioControllerTest {
         org.springframework.http.converter.json.MappingJackson2HttpMessageConverter converter =
                 new org.springframework.http.converter.json.MappingJackson2HttpMessageConverter(objectMapper);
         this.mockMvc = MockMvcBuilders.standaloneSetup(usuarioController)
+                .defaultRequest(get("/").requestAttr(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE, authenticatedUser()))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(converter)
                 .build();
@@ -66,7 +69,7 @@ class UsuarioControllerTest {
         resp.setName("Bruno");
         resp.setEmail("bruno@example.com");
 
-        when(usuarioService.create(any(UsuarioRequestDTO.class))).thenReturn(resp);
+        when(usuarioService.create(any(UsuarioRequestDTO.class), eq(7))).thenReturn(resp);
 
         mockMvc.perform(post("/api/usuarios")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -75,7 +78,7 @@ class UsuarioControllerTest {
                 .andExpect(jsonPath("$.id").value("1"))
                 .andExpect(jsonPath("$.name").value("Bruno"));
 
-        verify(usuarioService).create(any(UsuarioRequestDTO.class));
+        verify(usuarioService).create(any(UsuarioRequestDTO.class), eq(7));
     }
 
     @Test
@@ -101,13 +104,13 @@ class UsuarioControllerTest {
         UsuarioResponseDTO u2 = new UsuarioResponseDTO();
         u2.setId("2"); u2.setName("B");
 
-        when(usuarioService.listAll(null)).thenReturn(Arrays.asList(u1, u2));
+        when(usuarioService.listAll(null, 7)).thenReturn(Arrays.asList(u1, u2));
 
         mockMvc.perform(get("/api/usuarios").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
 
-        verify(usuarioService).listAll(null);
+        verify(usuarioService).listAll(null, 7);
     }
 
     @Test
@@ -117,7 +120,7 @@ class UsuarioControllerTest {
         UsuarioResponseDTO resp = new UsuarioResponseDTO();
         resp.setId("5"); resp.setName("Updated");
 
-        when(usuarioService.update(eq(5), any(UsuarioRequestDTO.class))).thenReturn(resp);
+        when(usuarioService.update(eq(5), any(UsuarioRequestDTO.class), eq(7))).thenReturn(resp);
 
         mockMvc.perform(patch("/api/usuarios/5")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -126,7 +129,7 @@ class UsuarioControllerTest {
                 .andExpect(jsonPath("$.id").value("5"))
                 .andExpect(jsonPath("$.name").value("Updated"));
 
-        verify(usuarioService).update(eq(5), any(UsuarioRequestDTO.class));
+        verify(usuarioService).update(eq(5), any(UsuarioRequestDTO.class), eq(7));
     }
 
     @Test
@@ -134,7 +137,7 @@ class UsuarioControllerTest {
         UsuarioRequestDTO req = new UsuarioRequestDTO();
         req.setName("DoesNotExist");
 
-        when(usuarioService.update(eq(99), any(UsuarioRequestDTO.class))).thenReturn(null);
+        when(usuarioService.update(eq(99), any(UsuarioRequestDTO.class), eq(7))).thenReturn(null);
 
         mockMvc.perform(patch("/api/usuarios/99")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -142,7 +145,7 @@ class UsuarioControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
 
-        verify(usuarioService).update(eq(99), any(UsuarioRequestDTO.class));
+        verify(usuarioService).update(eq(99), any(UsuarioRequestDTO.class), eq(7));
     }
 
     @Test
@@ -152,7 +155,7 @@ class UsuarioControllerTest {
         req.setEmail("dup@example.com");
         req.setPerfilId(1);
 
-        when(usuarioService.create(any(UsuarioRequestDTO.class))).thenThrow(new ConflictException("Email já cadastrado"));
+        when(usuarioService.create(any(UsuarioRequestDTO.class), eq(7))).thenThrow(new ConflictException("Email já cadastrado"));
 
         mockMvc.perform(post("/api/usuarios")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -160,6 +163,13 @@ class UsuarioControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
 
-        verify(usuarioService).create(any(UsuarioRequestDTO.class));
+        verify(usuarioService).create(any(UsuarioRequestDTO.class), eq(7));
+    }
+
+    private Usuario authenticatedUser() {
+        Usuario user = new Usuario();
+        user.setId(1);
+        user.setOrganizacaoId(7);
+        return user;
     }
 }
