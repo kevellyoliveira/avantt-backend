@@ -22,10 +22,16 @@ public class Sprint {
     @Column(name = "data_fim")
     private LocalDate dataFim;
 
-    @Column(name = "status_id")
+    @Transient
     private Integer statusId;
-    
-    @Column(name = "progresso")
+
+    @Column(name = "objetivo", columnDefinition = "TEXT")
+    private String objetivo;
+
+    @Column(name = "status")
+    private String status;
+
+    @Transient
     // Progresso da sprint (0..100). Calculado pela regra:
     // - Contagem de tarefas concluídas / contagem de tarefas (excluindo as canceladas), arredondado para inteiro.
     // - Atualizado por recalculateAndPersistProgress(...) em SprintService e exposto em SprintResponseDTO.progress.
@@ -52,6 +58,33 @@ public class Sprint {
     public Integer getStatusId() { return statusId; }
     public void setStatusId(Integer statusId) { this.statusId = statusId; }
 
+    public String getObjetivo() { return objetivo; }
+    public void setObjetivo(String objetivo) { this.objetivo = objetivo; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
     public Integer getProgresso() { return progresso; }
     public void setProgresso(Integer progresso) { this.progresso = progresso; }
+
+    @PrePersist
+    @PreUpdate
+    private void synchronizeStatus() {
+        if (statusId != null) {
+            status = switch (statusId) {
+                case 2 -> "Em andamento";
+                case 3 -> "Finalizada";
+                default -> "Planejada";
+            };
+        }
+    }
+
+    @PostLoad
+    private void synchronizeStatusId() {
+        statusId = switch (status) {
+            case "Em andamento" -> 2;
+            case "Finalizada" -> 3;
+            default -> 1;
+        };
+    }
 }

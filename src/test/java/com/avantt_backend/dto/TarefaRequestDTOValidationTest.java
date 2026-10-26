@@ -52,7 +52,7 @@ class TarefaRequestDTOValidationTest {
 
         assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("title")));
         assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("projectId")));
-        assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("sprintId")));
+        // sprintId is optional because backlog tasks may not belong to a sprint.
         assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("statusId")));
         assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("plannedEnd")));
     }

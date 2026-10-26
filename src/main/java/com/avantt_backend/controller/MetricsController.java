@@ -11,6 +11,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import jakarta.servlet.http.HttpServletRequest;
+import com.avantt_backend.config.AuthInterceptor;
+import com.avantt_backend.entity.Usuario;
+import com.avantt_backend.repository.ProjetoRepository;
 
 @RestController
 @RequestMapping(ApiPaths.API + "/metricas")
@@ -18,21 +22,34 @@ import java.util.Map;
 public class MetricsController {
 
     private final MetricsService metricsService;
+    private final ProjetoRepository projetoRepository;
 
-    public MetricsController(MetricsService metricsService) {
+    public MetricsController(MetricsService metricsService, ProjetoRepository projetoRepository) {
         this.metricsService = metricsService;
+        this.projetoRepository = projetoRepository;
+    }
+
+    private void checkProject(Integer projectId, HttpServletRequest request) {
+        Usuario user = (Usuario) request.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
+        projetoRepository.findById(projectId)
+                .filter(project -> user != null && user.getOrganizacaoId() != null
+                        && user.getOrganizacaoId().equals(project.getOrganizacaoId()))
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + projectId));
     }
 
     @Operation(summary = "Distribuição de tarefas por status (pizza)")
     @GetMapping(value = "/project/{projectId}/status-distribution", produces = "application/json")
-    public ResponseEntity<?> statusDistribution(@PathVariable("projectId") Integer projectId) {
+    public ResponseEntity<?> statusDistribution(@PathVariable("projectId") Integer projectId, HttpServletRequest request) {
+        checkProject(projectId, request);
         List<MetricStatusCountDTO> list = metricsService.getStatusDistribution(projectId);
         return ResponseEntity.ok(list);
     }
 
     @Operation(summary = "Taxa de conclusão e resumo")
     @GetMapping(value = "/project/{projectId}/overview", produces = "application/json")
-    public ResponseEntity<?> overview(@PathVariable("projectId") Integer projectId) {
+    public ResponseEntity<?> overview(@PathVariable("projectId") Integer projectId, HttpServletRequest request) {
+        checkProject(projectId, request);
         MetricCompletionRateDTO rate = metricsService.getCompletionRate(projectId);
         Integer overdue = metricsService.getOverdueCount(projectId);
         Double hours = metricsService.getHoursEstimated(projectId);
@@ -48,14 +65,17 @@ public class MetricsController {
     @Operation(summary = "Top N tarefas mais atrasadas")
     @GetMapping(value = "/project/{projectId}/top-overdue", produces = "application/json")
     public ResponseEntity<?> topOverdue(@PathVariable("projectId") Integer projectId,
-                                        @RequestParam(value = "limit", required = false, defaultValue = "10") Integer limit) {
+                                        @RequestParam(value = "limit", required = false, defaultValue = "10") Integer limit,
+                                        HttpServletRequest request) {
+        checkProject(projectId, request);
         List<MetricOverdueTaskDTO> list = metricsService.getTopOverdue(projectId, limit);
         return ResponseEntity.ok(list);
     }
 
     @Operation(summary = "Tarefas por membro")
     @GetMapping(value = "/project/{projectId}/tasks-by-member", produces = "application/json")
-    public ResponseEntity<?> tasksByMember(@PathVariable("projectId") Integer projectId) {
+    public ResponseEntity<?> tasksByMember(@PathVariable("projectId") Integer projectId, HttpServletRequest request) {
+        checkProject(projectId, request);
         List<MetricTasksByMemberDTO> list = metricsService.getTasksByMember(projectId);
         return ResponseEntity.ok(list);
     }
