@@ -62,14 +62,6 @@ public class ProjetoService {
 
     @Transactional
     public ProjetoResponseDTO create(ProjetoRequestDTO dto) {
-        return create(dto, dto.getOrganizacaoId());
-    }
-
-    @Transactional
-    public ProjetoResponseDTO create(ProjetoRequestDTO dto, Integer authenticatedOrganizationId) {
-        if (authenticatedOrganizationId == null) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário não vinculado a uma organização");
-        }
         Projeto p = new Projeto();
         p.setName(dto.getName());
         p.setDescription(dto.getDescription());
@@ -80,12 +72,15 @@ public class ProjetoService {
         p.setStatusId(dto.getStatusId());
         // cliente/organizacao (relation exists only via projeto)
         if (dto.getClienteId() != null) {
-            if (!clienteRepository.findById(dto.getClienteId())
-                    .filter(cliente -> authenticatedOrganizationId.equals(cliente.getOrganizacaoId())).isPresent())
+            if (!clienteRepository.existsById(dto.getClienteId()))
                 throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Cliente não encontrado: id=" + dto.getClienteId());
             p.setClienteId(dto.getClienteId());
         }
-        p.setOrganizacaoId(authenticatedOrganizationId);
+        if (dto.getOrganizacaoId() != null) {
+            if (!organizacaoRepository.existsById(dto.getOrganizacaoId()))
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Organização não encontrada: id=" + dto.getOrganizacaoId());
+            p.setOrganizacaoId(dto.getOrganizacaoId());
+        }
         p.setStartDate(dto.getStartDate());
         p.setProgress(dto.getProgress());
 
@@ -102,8 +97,7 @@ public class ProjetoService {
         if (dto.getTeam() != null) {
             for (Integer usuarioId : dto.getTeam()) {
             if (usuarioId == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário inválido na lista de team");
-            if (!usuarioRepository.findById(usuarioId)
-                    .filter(usuario -> authenticatedOrganizationId.equals(usuario.getOrganizacaoId())).isPresent()) {
+            if (!usuarioRepository.findById(usuarioId).isPresent()) {
                     throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Usuário não encontrado: id=" + usuarioId);
             }
                 ProjetoUsuario pu = new ProjetoUsuario();
@@ -118,17 +112,9 @@ public class ProjetoService {
 
     @Transactional
     public ProjetoResponseDTO update(Integer projetoId, ProjetoRequestDTO dto) {
-        return update(projetoId, dto, null);
-    }
-
-    @Transactional
-    public ProjetoResponseDTO update(Integer projetoId, ProjetoRequestDTO dto, Integer authenticatedOrganizationId) {
         var pOpt = projetoRepository.findById(projetoId);
         if (pOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + projetoId);
         var p = pOpt.get();
-        if (authenticatedOrganizationId != null && !authenticatedOrganizationId.equals(p.getOrganizacaoId())) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + projetoId);
-        }
 
         // validate status if provided
         if (dto.getStatusId() != null) {
@@ -139,12 +125,15 @@ public class ProjetoService {
 
         // cliente/organizacao updates
         if (dto.getClienteId() != null) {
-            if (!clienteRepository.findById(dto.getClienteId())
-                    .filter(cliente -> p.getOrganizacaoId().equals(cliente.getOrganizacaoId())).isPresent())
+            if (!clienteRepository.existsById(dto.getClienteId()))
                 throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Cliente não encontrado: id=" + dto.getClienteId());
             p.setClienteId(dto.getClienteId());
         }
-        // The organization is owned by the authenticated workspace and cannot be changed here.
+        if (dto.getOrganizacaoId() != null) {
+            if (!organizacaoRepository.existsById(dto.getOrganizacaoId()))
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Organização não encontrada: id=" + dto.getOrganizacaoId());
+            p.setOrganizacaoId(dto.getOrganizacaoId());
+        }
 
         // update basic fields
         if (dto.getName() != null) p.setName(dto.getName());
@@ -163,36 +152,10 @@ public class ProjetoService {
         p.setEndDate(newEnd);
 
         // team additions
-        if (dto.getTeam() != null) {
-            var requested = new java.util.HashSet<>(dto.getTeam());
-            var current = new java.util.HashSet<Integer>();
-            projetoUsuarioRepository.findByIdProjetoId(p.getId())
-                    .forEach(link -> current.add(link.getId().getUsuarioId()));
-            for (Integer usuarioId : requested) {
-                if (usuarioId == null || !usuarioRepository.findById(usuarioId)
-                        .filter(usuario -> p.getOrganizacaoId().equals(usuario.getOrganizacaoId())).isPresent()) {
-                    throw new ApiException("Usuário não encontrado: id=" + usuarioId);
-                }
-                if (!current.contains(usuarioId)) {
-                    projetoUsuarioRepository.save(new ProjetoUsuario(
-                            new ProjetoUsuarioId(p.getId(), usuarioId), null));
-                }
-            }
-            for (Integer usuarioId : current) {
-                if (!requested.contains(usuarioId) && tarefaRepository.countByProjetoIdAndAssignee(p.getId(), usuarioId) == 0) {
-                    projetoUsuarioRepository.deleteById(new ProjetoUsuarioId(p.getId(), usuarioId));
-                }
-            }
-        }
-
-        // Backward-compatible incremental team additions.
         if (dto.getAddTeam() != null && !dto.getAddTeam().isEmpty()) {
             for (Integer usuarioId : dto.getAddTeam()) {
                 if (usuarioId == null) throw new ApiException("Usuário inválido na lista de team");
-                if (!usuarioRepository.findById(usuarioId)
-                        .filter(usuario -> p.getOrganizacaoId().equals(usuario.getOrganizacaoId())).isPresent()) {
-                    throw new ApiException("Usuário não encontrado: id=" + usuarioId);
-                }
+                if (!usuarioRepository.findById(usuarioId).isPresent()) throw new ApiException("Usuário não encontrado: id=" + usuarioId);
 
                 var id = new ProjetoUsuarioId(p.getId(), usuarioId);
                 if (!projetoUsuarioRepository.existsById(id)) {
@@ -224,23 +187,8 @@ public class ProjetoService {
     }
 
     public List<ProjetoResponseDTO> listAll() {
-        return listAll(null);
-    }
-
-    public List<ProjetoResponseDTO> listAll(Integer organizacaoId) {
         List<Projeto> all = projetoRepository.findAll();
-        if (organizacaoId != null) {
-            all = all.stream().filter(project -> organizacaoId.equals(project.getOrganizacaoId())).toList();
-        }
         return all.stream().map(this::toFrontend).toList();
-    }
-
-    public ProjetoResponseDTO getById(Integer projetoId, Integer organizacaoId) {
-        Projeto project = projetoRepository.findById(projetoId)
-                .filter(item -> organizacaoId == null || organizacaoId.equals(item.getOrganizacaoId()))
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + projetoId));
-        return toFrontend(project);
     }
 
     private ProjetoResponseDTO toFrontend(Projeto p) {
@@ -298,16 +246,12 @@ public class ProjetoService {
             var puList = projetoUsuarioRepository.findByIdProjetoId(p.getId());
             if (puList != null && !puList.isEmpty()) {
                 var temp = new java.util.ArrayList<String>();
-                var tempIds = new java.util.ArrayList<Integer>();
                 for (var pu : puList) {
                     Integer uid = pu.getId().getUsuarioId();
-                    tempIds.add(uid);
                     usuarioRepository.findById(uid).ifPresent(u -> temp.add(u.getNome()));
                 }
                 teamNames = temp;
-                f.setTeamIds(tempIds);
             }
-            if (puList == null || puList.isEmpty()) f.setTeamIds(new java.util.ArrayList<>());
 
             f.setSprints(s);
             f.setTasks(t);

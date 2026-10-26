@@ -23,9 +23,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import jakarta.validation.Valid;
 import java.util.List;
-import jakarta.servlet.http.HttpServletRequest;
-import com.avantt_backend.config.AuthInterceptor;
-import com.avantt_backend.entity.Usuario;
 
 import static com.avantt_backend.util.ApiPaths.SPRINTS;
 import static com.avantt_backend.util.Mensagens.*;
@@ -52,10 +49,8 @@ public class SprintController {
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.SprintRequestDTO.class), examples = {
                     @ExampleObject(name = "Sprint request example", value = "{\"name\": \"Sprint 05 - Entrega\", \"projectId\": 1, \"startDate\": \"2027-09-01\", \"endDate\": \"2027-09-15\", \"statusId\": 2, \"team\": [1,2]}")
                 }))
-            @Valid @org.springframework.web.bind.annotation.RequestBody SprintRequestDTO request,
-            HttpServletRequest httpRequest) {
-        Usuario authenticated = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
-        var created = sprintService.create(request, authenticated.getOrganizacaoId());
+            @Valid @org.springframework.web.bind.annotation.RequestBody SprintRequestDTO request) {
+        var created = sprintService.create(request);
         return ResponseEntity.status(201).body(created);
     }
 
@@ -67,10 +62,8 @@ public class SprintController {
     @GetMapping(produces = "application/json")
     public ResponseEntity<?> listSprints(
             @Parameter(description = "ID do projeto para filtrar as sprints", required = false)
-            @RequestParam(value = "projeto_id", required = false) String projetoId,
-            HttpServletRequest httpRequest) {
-        Usuario authenticated = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
-        List<SprintResponseDTO> list = sprintService.listAll(projetoId, authenticated.getOrganizacaoId());
+            @RequestParam(value = "projeto_id", required = false) String projetoId) {
+        List<SprintResponseDTO> list = sprintService.listAll(projetoId);
         return ResponseEntity.ok(list);
     }
 
@@ -86,10 +79,8 @@ public class SprintController {
             @RequestBody(description = "Dados para atualizar a sprint", required = true,
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.SprintRequestDTO.class), examples = {
                     @ExampleObject(name = "Sprint update request example", value = "{\"name\": \"Sprint 05 - Entrega atualizada\", \"startDate\": \"2027-09-02\", \"endDate\": \"2027-09-16\", \"addTeam\": [3], \"removeTeam\": [2], \"statusId\": 2}")
-                })) @Valid @org.springframework.web.bind.annotation.RequestBody SprintRequestDTO request,
-            HttpServletRequest httpRequest) {
-        Usuario authenticated = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
-        var updated = sprintService.update(id, request, authenticated.getOrganizacaoId());
+                })) @Valid @org.springframework.web.bind.annotation.RequestBody SprintRequestDTO request) {
+        var updated = sprintService.update(id, request);
         return ResponseEntity.ok(updated);
     }
 

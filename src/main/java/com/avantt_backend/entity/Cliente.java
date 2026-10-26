@@ -14,28 +14,19 @@ public class Cliente {
     @Column(name = "nome", nullable = false)
     private String nome;
 
-    @Column(name = "documento")
-    private String documento;
-
-    @Column(name = "email")
+    @Column(name = "email_contato")
     private String emailContato;
 
     @Column(name = "telefone")
     private String telefone;
 
-    @Column(name = "organizacao_id")
-    private Integer organizacaoId;
-
-    @Transient
-    private Integer organizacaoClienteId;
-
-    @Column(name = "data_criacao", insertable = false, updatable = false)
+    @Column(name = "data_cadastro", insertable = false, updatable = false)
     private LocalDateTime dataCadastro;
 
-    @Transient
+    @Column(name = "is_ativo")
     private Boolean isAtivo = Boolean.TRUE;
 
-    @Transient
+    @Column(name = "data_desativacao")
     private LocalDateTime dataDesativacao;
 
     public Cliente() {}
@@ -45,18 +36,12 @@ public class Cliente {
 
     public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }
-    public String getDocumento() { return documento; }
-    public void setDocumento(String documento) { this.documento = documento; }
 
     public String getEmailContato() { return emailContato; }
     public void setEmailContato(String emailContato) { this.emailContato = emailContato; }
 
     public String getTelefone() { return telefone; }
     public void setTelefone(String telefone) { this.telefone = telefone; }
-    public Integer getOrganizacaoId() { return organizacaoId; }
-    public void setOrganizacaoId(Integer organizacaoId) { this.organizacaoId = organizacaoId; }
-    public Integer getOrganizacaoClienteId() { return organizacaoClienteId; }
-    public void setOrganizacaoClienteId(Integer organizacaoClienteId) { this.organizacaoClienteId = organizacaoClienteId; }
 
     public LocalDateTime getDataCadastro() { return dataCadastro; }
     public void setDataCadastro(LocalDateTime dataCadastro) { this.dataCadastro = dataCadastro; }

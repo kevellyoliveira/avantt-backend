@@ -14,14 +14,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableWebMvc
 public class AppConfig implements WebMvcConfigurer {
 
-    private final AuthInterceptor authInterceptor;
-
-    public AppConfig(AuthInterceptor authInterceptor) {
-        this.authInterceptor = authInterceptor;
-    }
-
-    // Em produção, substitua por uma lista explícita de origens confiáveis.
-    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:8443}")
+    // Defina em application.properties: app.cors.allowed-origins=http://localhost:8443,https://meu-frontend.com
+    @Value("${app.cors.allowed-origins:http://localhost:8443}")
     private String allowedOrigins;
 
     @Override
@@ -33,10 +27,5 @@ public class AppConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);
-    }
-
-    @Override
-    public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
-        registry.addInterceptor(authInterceptor).addPathPatterns("/api/**");
     }
 }

@@ -15,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 
 import static com.avantt_backend.util.Mensagens.*;
@@ -42,17 +41,10 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody(description = "Dados para registro", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.RegisterRequestDTO.class), examples = {
                 @ExampleObject(name = "Register example", value = "{\"name\": \"Ana Souza\", \"email\": \"ana.souza@email.com\", \"password\": \"Senha123!\", \"role\": \"Colaborador\"}")
-            })) @Valid @org.springframework.web.bind.annotation.RequestBody RegisterRequestDTO req) {
+            })) RegisterRequestDTO req) {
         var res = authService.register(req);
         if (res == null) throw new com.avantt_backend.exception.ConflictException(MENSAGEM_EMAIL_CADASTRADO_409);
         return ResponseEntity.status(201).body(res);
-    }
-
-    @PostMapping("/register-organizacao")
-    @Operation(summary = "Registrar organização e primeiro gestor")
-    public ResponseEntity<?> registerOrganization(
-            @Valid @org.springframework.web.bind.annotation.RequestBody OrganizationRegisterRequestDTO req) {
-        return ResponseEntity.status(201).body(authService.registerOrganization(req));
     }
 
     @PostMapping("/login")
@@ -67,7 +59,7 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody(description = "Credenciais de login", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.AuthRequestDTO.class), examples = {
                 @ExampleObject(name = "Login example", value = "{\"email\": \"ana.souza@email.com\", \"password\": \"Senha123!\"}")
-            })) @Valid @org.springframework.web.bind.annotation.RequestBody AuthRequestDTO req) {
+            })) AuthRequestDTO req) {
         var res = authService.login(req);
         if (res == null) throw new com.avantt_backend.exception.UnauthorizedException(MENSAGEM_CREDENCIAIS_INVALIDAS_401);
         // Return token also in the Authorization response header to simplify use in Swagger UI
@@ -101,23 +93,6 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/alterar-senha")
-    @Operation(summary = "Alterar senha autenticada")
-    @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<?> changePassword(
-            HttpServletRequest request,
-            @Valid @org.springframework.web.bind.annotation.RequestBody ChangePasswordRequestDTO req) {
-        String authorization = request.getHeader("Authorization");
-        if (authorization == null || authorization.isBlank()) {
-            throw new com.avantt_backend.exception.UnauthorizedException(MENSAGEM_TOKEN_AUSENTE);
-        }
-        String token = authorization.toLowerCase().startsWith("bearer ")
-                ? authorization.substring(7).trim()
-                : authorization.trim();
-        authService.changePassword(token, req);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/password-reset/request")
     @Operation(summary = "Solicitar redefinição de senha")
     @ApiResponses(value = {
@@ -148,10 +123,5 @@ public class AuthController {
         boolean ok = authService.confirmPasswordReset(req);
         if (!ok) throw new com.avantt_backend.exception.ApiException(MENSAGEM_ERRO_TOKEN_400);
         return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/convite/aceitar")
-    public ResponseEntity<?> acceptInvitation(@jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody AcceptInvitationRequestDTO req) {
-        return ResponseEntity.ok(authService.acceptInvitation(req));
     }
 }

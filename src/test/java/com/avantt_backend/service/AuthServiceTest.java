@@ -1,14 +1,11 @@
 package com.avantt_backend.service;
 
 import com.avantt_backend.dto.AuthRequestDTO;
-import com.avantt_backend.dto.ChangePasswordRequestDTO;
 import com.avantt_backend.dto.PasswordResetConfirmDTO;
 import com.avantt_backend.dto.PasswordResetRequestDTO;
 import com.avantt_backend.dto.RegisterRequestDTO;
 import com.avantt_backend.entity.Usuario;
 import com.avantt_backend.repository.UsuarioRepository;
-import com.avantt_backend.repository.OrganizacaoRepository;
-import com.avantt_backend.repository.PerfilRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,12 +25,6 @@ class AuthServiceTest {
 
     @Mock
     UsuarioRepository usuarioRepository;
-
-    @Mock
-    OrganizacaoRepository organizacaoRepository;
-
-    @Mock
-    PerfilRepository perfilRepository;
 
     @InjectMocks
     AuthService authService;
@@ -80,40 +71,6 @@ class AuthServiceTest {
         bad.setEmail("u@e.com");
         bad.setPassword("wrong");
         assertNull(authService.login(bad));
-    }
-
-    @Test
-    void changePassword_requiresValidSessionAndCurrentPassword() {
-        Usuario u = new Usuario();
-        u.setId(10);
-        u.setIsAtivo(true);
-        u.setAuthToken("active-token");
-        u.setAuthTokenExpiry(LocalDateTime.now().plusHours(1));
-        var encoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
-        u.setSenha(encoder.encode("old-password"));
-
-        when(usuarioRepository.findByAuthToken("active-token")).thenReturn(Optional.of(u));
-        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        ChangePasswordRequestDTO request = new ChangePasswordRequestDTO();
-        request.setSenhaAtual("old-password");
-        request.setNovaSenha("new-password");
-
-        assertDoesNotThrow(() -> authService.changePassword("active-token", request));
-        assertTrue(encoder.matches("new-password", u.getSenha()));
-        verify(usuarioRepository).save(u);
-    }
-
-    @Test
-    void authenticateToken_rejectsExpiredSession() {
-        Usuario u = new Usuario();
-        u.setAuthToken("expired-token");
-        u.setIsAtivo(true);
-        u.setAuthTokenExpiry(LocalDateTime.now().minusMinutes(1));
-
-        when(usuarioRepository.findByAuthToken("expired-token")).thenReturn(Optional.of(u));
-
-        assertNull(authService.authenticateToken("expired-token"));
     }
 
     @Test

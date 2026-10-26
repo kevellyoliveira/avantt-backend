@@ -6,6 +6,4 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
-    java.util.List<Cliente> findByOrganizacaoIdOrderByNome(Integer organizacaoId);
-    java.util.Optional<Cliente> findByIdAndOrganizacaoId(Integer id, Integer organizacaoId);
 }

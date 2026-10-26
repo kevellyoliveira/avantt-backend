@@ -16,8 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import com.avantt_backend.config.AuthInterceptor;
-import com.avantt_backend.entity.Usuario;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.time.LocalDate;
@@ -54,7 +52,6 @@ class ProjetoControllerTest {
         org.springframework.http.converter.json.MappingJackson2HttpMessageConverter converter =
                 new org.springframework.http.converter.json.MappingJackson2HttpMessageConverter(objectMapper);
         this.mockMvc = MockMvcBuilders.standaloneSetup(projetoController)
-                .defaultRequest(get("/").requestAttr(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE, authenticatedUser()))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .setMessageConverters(converter)
@@ -69,7 +66,7 @@ class ProjetoControllerTest {
 
         ProjetoResponseDTO resp = new ProjetoResponseDTO();
         resp.setId("10"); resp.setName("Portal");
-        when(projetoService.create(any(ProjetoRequestDTO.class), eq(7))).thenReturn(resp);
+        when(projetoService.create(any(ProjetoRequestDTO.class))).thenReturn(resp);
 
         mockMvc.perform(post("/api/projetos")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -78,7 +75,7 @@ class ProjetoControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value("10"));
 
-        verify(projetoService).create(any(ProjetoRequestDTO.class), eq(7));
+        verify(projetoService).create(any(ProjetoRequestDTO.class));
     }
 
     @Test
@@ -104,7 +101,7 @@ class ProjetoControllerTest {
 
         ProjetoResponseDTO resp = new ProjetoResponseDTO();
         resp.setId("5"); resp.setName("Updated");
-        when(projetoService.update(eq(5), any(ProjetoRequestDTO.class), eq(7))).thenReturn(resp);
+        when(projetoService.update(eq(5), any(ProjetoRequestDTO.class))).thenReturn(resp);
 
         mockMvc.perform(put("/api/projetos/5")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -112,18 +109,18 @@ class ProjetoControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value("5"));
 
-        verify(projetoService).update(eq(5), any(ProjetoRequestDTO.class), eq(7));
+        verify(projetoService).update(eq(5), any(ProjetoRequestDTO.class));
     }
 
     @Test
-    void getList_empty_shouldReturn200() throws Exception {
-        when(projetoService.listAll(7)).thenReturn(List.of());
+    void getList_empty_shouldReturn404() throws Exception {
+        when(projetoService.listAll()).thenReturn(List.of());
 
         mockMvc.perform(get("/api/projetos").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
 
-        verify(projetoService).listAll(7);
+        verify(projetoService).listAll();
     }
 
     @Test
@@ -132,7 +129,7 @@ class ProjetoControllerTest {
         String end = LocalDate.now().plusDays(21).toString();
         String json = "{\"name\": \"Dup\", \"statusId\": 1, \"startDate\": \"" + start + "\", \"endDate\": \"" + end + "\"}";
 
-        when(projetoService.create(any(ProjetoRequestDTO.class), eq(7))).thenThrow(new com.avantt_backend.exception.ConflictException("Conflito"));
+        when(projetoService.create(any(ProjetoRequestDTO.class))).thenThrow(new com.avantt_backend.exception.ConflictException("Conflito"));
 
         mockMvc.perform(post("/api/projetos")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -140,13 +137,6 @@ class ProjetoControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
 
-        verify(projetoService).create(any(ProjetoRequestDTO.class), eq(7));
-    }
-
-    private Usuario authenticatedUser() {
-        Usuario user = new Usuario();
-        user.setId(1);
-        user.setOrganizacaoId(7);
-        return user;
+        verify(projetoService).create(any(ProjetoRequestDTO.class));
     }
 }

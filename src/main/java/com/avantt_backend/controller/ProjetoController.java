@@ -20,9 +20,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import jakarta.servlet.http.HttpServletRequest;
-import com.avantt_backend.config.AuthInterceptor;
-import com.avantt_backend.entity.Usuario;
 
 import java.util.List;
 
@@ -55,10 +52,8 @@ public class ProjetoController {
     public ResponseEntity<?> createProjeto(@RequestBody(description = "Dados do projeto a ser criado", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProjetoRequestDTO.class), examples = {
                 @ExampleObject(name = "Projeto request example", value = "{\"name\": \"Portal Corporativo\", \"description\": \"Novo portal corporativo\", \"color\": \"#FF5733\", \"statusId\": 2, \"startDate\": \"2027-07-01\", \"endDate\": \"2027-08-20\", \"team\": [1,2]}")
-            })) @Valid @org.springframework.web.bind.annotation.RequestBody ProjetoRequestDTO request,
-            HttpServletRequest httpRequest) {
-        Usuario authenticatedUser = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
-        var created = projetoService.create(request, authenticatedUser.getOrganizacaoId());
+            })) @Valid @org.springframework.web.bind.annotation.RequestBody ProjetoRequestDTO request) {
+        var created = projetoService.create(request);
         if (created == null) throw new com.avantt_backend.exception.ConflictException(MENSAGEM_ERRO_CRIAR_PROJETO_409);
         return ResponseEntity.status(201).body(created);
     }
@@ -82,9 +77,8 @@ public class ProjetoController {
     public ResponseEntity<?> updateProjeto(@PathVariable Integer id, @RequestBody(description = "Dados para atualizar o projeto", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProjetoRequestDTO.class), examples = {
                 @ExampleObject(name = "Projeto update request example", value = "{\"name\": \"Portal Corporativo - v2\", \"description\": \"Ajustes\", \"statusId\": 2, \"startDate\": \"2027-07-02\", \"endDate\": \"2027-08-21\"}")
-            })) ProjetoRequestDTO request, HttpServletRequest httpRequest) {
-        Usuario authenticatedUser = (Usuario) httpRequest.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
-        var updated = projetoService.update(id, request, authenticatedUser.getOrganizacaoId());
+            })) ProjetoRequestDTO request) {
+        var updated = projetoService.update(id, request);
         return ResponseEntity.ok(updated);
     }
 
@@ -92,20 +86,16 @@ public class ProjetoController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Lista de projetos retornada com sucesso",
                      content = @Content(schema = @Schema(implementation = ProjetoResponseDTO.class))),
+        @ApiResponse(responseCode = "404", description = "Nenhum projeto encontrado",
+                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "500", description = "Erro interno do servidor",
                      content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping(path = PROJETOS, produces = "application/json")
-    public ResponseEntity<?> listProjetos(HttpServletRequest request) {
-        Usuario authenticatedUser = (Usuario) request.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
-        List<ProjetoResponseDTO> list = projetoService.listAll(authenticatedUser.getOrganizacaoId());
+    public ResponseEntity<?> listProjetos() {
+        List<ProjetoResponseDTO> list = projetoService.listAll();
+        if (list.isEmpty()) throw new com.avantt_backend.exception.ResourceNotFoundException(MENSAGEM_ERRO_LISTAR_PROJETOS_404);
         return ResponseEntity.ok(list);
-    }
-
-    @GetMapping(path = PROJETOS + "/{id}", produces = "application/json")
-    public ResponseEntity<?> getProjeto(@PathVariable Integer id, HttpServletRequest request) {
-        Usuario authenticatedUser = (Usuario) request.getAttribute(AuthInterceptor.AUTHENTICATED_USER_ATTRIBUTE);
-        return ResponseEntity.ok(projetoService.getById(id, authenticatedUser.getOrganizacaoId()));
     }
 
     @Operation(summary = "Obter progresso do projeto", description = "Recalcula e retorna o progresso do projeto (0..100) baseado nas sprints.")

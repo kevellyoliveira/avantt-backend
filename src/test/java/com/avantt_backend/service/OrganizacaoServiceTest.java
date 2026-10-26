@@ -88,6 +88,7 @@ class OrganizacaoServiceTest {
         existing.setIsAtivo(true);
 
         when(organizacaoRepository.findById(7)).thenReturn(Optional.of(existing));
+        when(organizacaoRepository.existsByCnpj(any())).thenReturn(false);
         when(organizacaoRepository.save(any(Organizacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         OrganizacaoRequestDTO dto = new OrganizacaoRequestDTO();

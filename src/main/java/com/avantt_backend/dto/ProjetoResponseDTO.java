@@ -19,12 +19,9 @@ public class ProjetoResponseDTO {
     private SprintsDTO sprints;
     private ProjectTasksDTO tasks;
     private List<String> team;
-    private List<Integer> teamIds;
     private Integer clienteId;
     private Integer organizacaoId;
     private String organizacaoName;
-    private List<String> risks = java.util.Collections.emptyList();
-    private List<Object> milestones = java.util.Collections.emptyList();
 
     public ProjetoResponseDTO() {}
 
@@ -67,8 +64,6 @@ public class ProjetoResponseDTO {
 
     public List<String> getTeam() { return team; }
     public void setTeam(List<String> team) { this.team = team; }
-    public List<Integer> getTeamIds() { return teamIds; }
-    public void setTeamIds(List<Integer> teamIds) { this.teamIds = teamIds; }
 
     public Integer getClienteId() { return clienteId; }
     public void setClienteId(Integer clienteId) { this.clienteId = clienteId; }
@@ -78,11 +73,5 @@ public class ProjetoResponseDTO {
 
     public String getOrganizacaoName() { return organizacaoName; }
     public void setOrganizacaoName(String organizacaoName) { this.organizacaoName = organizacaoName; }
-
-    public List<String> getRisks() { return risks; }
-    public void setRisks(List<String> risks) { this.risks = risks == null ? java.util.Collections.emptyList() : risks; }
-
-    public List<Object> getMilestones() { return milestones; }
-    public void setMilestones(List<Object> milestones) { this.milestones = milestones == null ? java.util.Collections.emptyList() : milestones; }
 
 }

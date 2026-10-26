@@ -1,14 +1,7 @@
 package com.avantt_backend.dto;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-
 public class AuthRequestDTO {
-    @NotBlank(message = "email é obrigatório")
-    @Email(message = "email inválido")
     private String email;
-
-    @NotBlank(message = "password é obrigatório")
     private String password;
 
     public String getEmail() { return email; }

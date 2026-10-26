@@ -1,15 +1,12 @@
 package com.avantt_backend.controller;
 
 import com.avantt_backend.entity.Tag;
-import com.avantt_backend.dto.TagRequestDTO;
 import com.avantt_backend.repository.TagRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 // keep entity Tag import; use fully-qualified Swagger Tag to avoid name clash with entity
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -44,14 +41,6 @@ public class TagController {
     public ResponseEntity<?> listAll() {
         List<Tag> all = tagRepository.findAll();
         return ResponseEntity.ok(all);
-    }
-
-    @PostMapping(path = "/tags", consumes = "application/json", produces = "application/json")
-    public ResponseEntity<?> create(@Valid @org.springframework.web.bind.annotation.RequestBody TagRequestDTO request) {
-        String name = request.getNome().trim();
-        var existing = tagRepository.findByNomeIgnoreCase(name);
-        if (existing.isPresent()) return ResponseEntity.ok(existing.get());
-        return ResponseEntity.status(201).body(tagRepository.save(new Tag(name)));
     }
 
     @Operation(summary = "Listar tags de tarefa", description = "Retorna os IDs das tags associadas a uma tarefa.")

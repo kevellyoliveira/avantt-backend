@@ -2,7 +2,6 @@ package com.avantt_backend.entity;
 
 import jakarta.persistence.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -21,15 +20,13 @@ public class Projeto {
     @Column(name = "descricao", columnDefinition = "TEXT")
     private String description;
 
-    // Not part of the official sistema_gestao schema, retained only for API compatibility.
-    @Transient
+    // maps to projeto.cor
+    @Column(name = "cor", length = 20)
     private String color;
 
-    @Transient
+    // maps to projeto.status_id
+    @Column(name = "status_id")
     private Integer statusId;
-
-    @Column(name = "status")
-    private String status;
 
     // maps to projeto.cliente_id
     @Column(name = "cliente_id")
@@ -47,11 +44,9 @@ public class Projeto {
     @Column(name = "data_fim")
     private LocalDate endDate;
 
-    @Transient
+    // maps to projeto.progresso
+    @Column(name = "progresso")
     private Integer progress;
-
-    @Column(name = "horas_estimadas")
-    private BigDecimal estimatedHours;
 
     public Projeto() {}
 
@@ -71,9 +66,6 @@ public class Projeto {
     public Integer getStatusId() { return statusId; }
     public void setStatusId(Integer statusId) { this.statusId = statusId; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-
     public Integer getClienteId() { return clienteId; }
     public void setClienteId(Integer clienteId) { this.clienteId = clienteId; }
 
@@ -88,32 +80,5 @@ public class Projeto {
 
     public Integer getProgress() { return progress; }
     public void setProgress(Integer progress) { this.progress = progress; }
-
-    public BigDecimal getEstimatedHours() { return estimatedHours; }
-    public void setEstimatedHours(BigDecimal estimatedHours) { this.estimatedHours = estimatedHours; }
-
-    @PrePersist
-    @PreUpdate
-    private void synchronizeStatus() {
-        if (statusId != null) {
-            status = switch (statusId) {
-                case 1 -> "Planejada";
-                case 2 -> "Em andamento";
-                case 3 -> "Concluída";
-                case 4 -> "Bloqueada";
-                default -> status;
-            };
-        }
-    }
-
-    @PostLoad
-    private void synchronizeStatusId() {
-        statusId = switch (status) {
-            case "Em andamento" -> 2;
-            case "Concluída" -> 3;
-            case "Bloqueada" -> 4;
-            default -> 1;
-        };
-    }
 
 }

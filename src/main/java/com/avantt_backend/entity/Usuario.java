@@ -22,17 +22,8 @@ public class Usuario {
     private String senha;
 
     // Let the DB manage this column by default. We mark it as non-insertable so JPA does not try to set it.
-    @Column(name = "data_criacao", insertable = false, updatable = false)
+    @Column(name = "data_cadastro", insertable = false, updatable = false)
     private LocalDateTime dataCadastro;
-
-    @Column(name = "cpf")
-    private String cpf;
-
-    @Column(name = "telefone")
-    private String telefone;
-
-    @Column(name = "papel")
-    private String papel;
 
     @Column(name = "is_ativo")
     private Boolean isAtivo = Boolean.TRUE;
@@ -74,15 +65,6 @@ public class Usuario {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-
-    public String getCpf() { return cpf; }
-    public void setCpf(String cpf) { this.cpf = cpf; }
-
-    public String getTelefone() { return telefone; }
-    public void setTelefone(String telefone) { this.telefone = telefone; }
-
-    public String getPapel() { return papel; }
-    public void setPapel(String papel) { this.papel = papel; }
 
     public LocalDateTime getDataCadastro() { return dataCadastro; }
     public void setDataCadastro(LocalDateTime dataCadastro) { this.dataCadastro = dataCadastro; }

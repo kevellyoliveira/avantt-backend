@@ -225,11 +225,6 @@ public class SprintService {
 
     @Transactional
     public SprintResponseDTO update(Integer sprintId, SprintRequestDTO dto) {
-        return update(sprintId, dto, null);
-    }
-
-    @Transactional
-    public SprintResponseDTO update(Integer sprintId, SprintRequestDTO dto, Integer organizationId) {
         var spOpt = sprintRepository.findById(sprintId);
         if (spOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Sprint não encontrada: id=" + sprintId);
         var s = spOpt.get();
@@ -246,9 +241,6 @@ public class SprintService {
         var projOpt = projetoRepository.findById(s.getProjetoId());
         if (projOpt.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + s.getProjetoId());
         var projeto = projOpt.get();
-        if (organizationId != null && !organizationId.equals(projeto.getOrganizacaoId())) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Sprint não encontrada: id=" + sprintId);
-        }
 
         // dates: if provided, validate same rules as create
         LocalDate newStart = (dto.getStartDate() == null) ? s.getDataInicio() : dto.getStartDate();
@@ -409,19 +401,11 @@ public class SprintService {
 
     @Transactional
     public SprintResponseDTO create(SprintRequestDTO dto) {
-        return create(dto, null);
-    }
-
-    @Transactional
-    public SprintResponseDTO create(SprintRequestDTO dto, Integer organizationId) {
         // Find project by id (avoid ambiguous names) - DTO validation ensures projectId presence
         var projetoOpt = projetoRepository.findById(dto.getProjectId());
         if (projetoOpt.isEmpty())
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + dto.getProjectId());
         var projeto = projetoOpt.get();
-        if (organizationId != null && !organizationId.equals(projeto.getOrganizacaoId())) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Projeto não encontrado: id=" + dto.getProjectId());
-        }
 
         Sprint s = new Sprint();
         // persist only the columns that exist on sprint table
@@ -518,10 +502,6 @@ public class SprintService {
     }
 
     public List<SprintResponseDTO> listAll(String projetoId) {
-        return listAll(projetoId, null);
-    }
-
-    public List<SprintResponseDTO> listAll(String projetoId, Integer organizationId) {
         List<Sprint> all;
         if (projetoId == null) {
             all = sprintRepository.findAll();
@@ -543,10 +523,6 @@ public class SprintService {
             }
             if (pid != null) all = sprintRepository.findByProjetoId(pid);
             else all = java.util.Collections.emptyList();
-        }
-        if (organizationId != null) {
-            all = all.stream().filter(sprint -> projetoRepository.findById(sprint.getProjetoId())
-                    .map(project -> organizationId.equals(project.getOrganizacaoId())).orElse(false)).toList();
         }
 
             return all.stream().map(s -> {

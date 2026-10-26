@@ -21,7 +21,6 @@ public class UsuarioRequestDTO {
     private String avatar;
     private String color;
     private List<String> projects;
-    private List<Integer> projectIds;
     private TasksDTO tasks;
     private Integer workload;
 
@@ -47,9 +46,6 @@ public class UsuarioRequestDTO {
 
     public List<String> getProjects() { return projects; }
     public void setProjects(List<String> projects) { this.projects = projects; }
-
-    public List<Integer> getProjectIds() { return projectIds; }
-    public void setProjectIds(List<Integer> projectIds) { this.projectIds = projectIds; }
 
     public TasksDTO getTasks() { return tasks; }
     public void setTasks(TasksDTO tasks) { this.tasks = tasks; }
