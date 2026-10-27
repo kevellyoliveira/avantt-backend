@@ -2,6 +2,8 @@ package com.avantt_backend.exception;
 
 import com.avantt_backend.dto.ErrorResponse;
 import com.avantt_backend.util.Mensagens;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import jakarta.validation.ConstraintViolationException;
 import java.nio.file.AccessDeniedException;
 import java.util.List;
@@ -24,6 +26,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 @ControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
@@ -112,6 +116,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAll(Exception ex) {
+        // Log full stacktrace to help diagnose unexpected server errors
+        logger.error("Unhandled exception caught by GlobalExceptionHandler", ex);
+
         ErrorResponse body = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal Server Error", Mensagens.MENSAGEM_ERRO_INTERNO_500);
         body.setCode("INTERNAL_ERROR");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);

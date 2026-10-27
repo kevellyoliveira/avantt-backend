@@ -27,11 +27,17 @@ public class AuthService {
 
     @Transactional
     public UsuarioResponseDTO register(RegisterRequestDTO req) {
-        if (usuarioRepository.existsByEmail(req.getEmail())) return null;
+        // normalize and validate email to avoid DB constraint violation (email NOT NULL)
+        String email = req.getEmail() == null ? null : req.getEmail().trim().toLowerCase();
+        if (email == null || email.isBlank()) {
+            throw new com.avantt_backend.exception.ApiException("email é obrigatório");
+        }
+
+        if (usuarioRepository.existsByEmail(email)) return null;
 
         Usuario u = new Usuario();
         u.setNome(req.getName());
-        u.setEmail(req.getEmail());
+        u.setEmail(email);
         u.setCargo(req.getRole());
         u.setSenha(passwordEncoder.encode(req.getPassword()));
 
@@ -49,7 +55,9 @@ public class AuthService {
 
     @Transactional
     public AuthResponseDTO login(AuthRequestDTO req) {
-        var opt = usuarioRepository.findByEmail(req.getEmail());
+        // normalize email to be case-insensitive and trim whitespace coming from the client
+        String email = req.getEmail() == null ? null : req.getEmail().trim().toLowerCase();
+        var opt = usuarioRepository.findByEmail(email);
         if (opt.isEmpty()) return null;
         Usuario u = opt.get();
         if (u.getSenha() == null) return null;

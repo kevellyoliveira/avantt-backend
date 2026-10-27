@@ -41,7 +41,7 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody(description = "Dados para registro", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.RegisterRequestDTO.class), examples = {
                 @ExampleObject(name = "Register example", value = "{\"name\": \"Ana Souza\", \"email\": \"ana.souza@email.com\", \"password\": \"Senha123!\", \"role\": \"Colaborador\"}")
-            })) RegisterRequestDTO req) {
+            })) @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody RegisterRequestDTO req) {
         var res = authService.register(req);
         if (res == null) throw new com.avantt_backend.exception.ConflictException(MENSAGEM_EMAIL_CADASTRADO_409);
         return ResponseEntity.status(201).body(res);
@@ -59,7 +59,7 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody(description = "Credenciais de login", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.AuthRequestDTO.class), examples = {
                 @ExampleObject(name = "Login example", value = "{\"email\": \"ana.souza@email.com\", \"password\": \"Senha123!\"}")
-            })) AuthRequestDTO req) {
+            })) @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody AuthRequestDTO req) {
         var res = authService.login(req);
         if (res == null) throw new com.avantt_backend.exception.UnauthorizedException(MENSAGEM_CREDENCIAIS_INVALIDAS_401);
         // Return token also in the Authorization response header to simplify use in Swagger UI
@@ -103,7 +103,7 @@ public class AuthController {
     public ResponseEntity<?> passwordResetRequest(@RequestBody(description = "Corpo: { \"email\": <email> }", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.PasswordResetRequestDTO.class), examples = {
                 @ExampleObject(name = "Password reset request example", value = "{\"email\": \"ana.souza@email.com\"}")
-            })) PasswordResetRequestDTO req) {
+            })) @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody PasswordResetRequestDTO req) {
         String token = authService.requestPasswordReset(req);
         if (token == null) throw new com.avantt_backend.exception.ResourceNotFoundException(MENSAGEM_ERRO_EMAIL_404);
         return ResponseEntity.ok(java.util.Map.of("resetToken", token));
@@ -119,7 +119,7 @@ public class AuthController {
     public ResponseEntity<?> passwordResetConfirm(@RequestBody(description = "Corpo: { \"token\": <token>, \"newPassword\": <senha> }", required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.PasswordResetConfirmDTO.class), examples = {
                 @ExampleObject(name = "Password reset confirm example", value = "{\"token\": \"abc123\", \"newPassword\": \"NovaSenha123!\"}")
-            }))  PasswordResetConfirmDTO req) {
+            }))  @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody PasswordResetConfirmDTO req) {
         boolean ok = authService.confirmPasswordReset(req);
         if (!ok) throw new com.avantt_backend.exception.ApiException(MENSAGEM_ERRO_TOKEN_400);
         return ResponseEntity.ok().build();

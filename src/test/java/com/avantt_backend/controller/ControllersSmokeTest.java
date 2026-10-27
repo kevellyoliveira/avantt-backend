@@ -47,7 +47,7 @@ class ControllersSmokeTest {
 
     @Test
     void tarefaController_create_and_list() {
-        TarefaRequestDTO req = new TarefaRequestDTO(); req.setTitle("T"); req.setProject("P"); req.setSprint("S");
+        TarefaRequestDTO req = new TarefaRequestDTO(); req.setTitle("T"); req.setProjectId(1); req.setSprintId(1);
         TarefaResponseDTO res = new TarefaResponseDTO(); res.setId("1"); res.setTitle("T");
         when(tarefaService.create(req)).thenReturn(res);
         ResponseEntity<?> r = tarefaController.create(req);
@@ -73,7 +73,7 @@ class ControllersSmokeTest {
 
     @Test
     void sprintController_create_and_list() {
-        SprintRequestDTO req = new SprintRequestDTO(); req.setProject("P"); req.setName("S");
+        SprintRequestDTO req = new SprintRequestDTO(); req.setProjectId(1); req.setName("S");
         com.avantt_backend.dto.SprintResponseDTO res = new com.avantt_backend.dto.SprintResponseDTO(); res.setId(2);
         when(sprintService.create(req)).thenReturn(res);
         ResponseEntity<?> r = sprintController.createSprint(req);
