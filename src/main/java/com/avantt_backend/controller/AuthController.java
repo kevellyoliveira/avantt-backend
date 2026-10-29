@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,8 +28,12 @@ import static com.avantt_backend.util.Mensagens.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final com.avantt_backend.service.OrganizacaoService organizacaoService;
 
-    public AuthController(AuthService authService) { this.authService = authService; }
+    public AuthController(AuthService authService, com.avantt_backend.service.OrganizacaoService organizacaoService) {
+        this.authService = authService;
+        this.organizacaoService = organizacaoService;
+    }
 
     @PostMapping("/register")
     @Operation(summary = "Registrar novo usuário")
@@ -123,5 +129,54 @@ public class AuthController {
         boolean ok = authService.confirmPasswordReset(req);
         if (!ok) throw new com.avantt_backend.exception.ApiException(MENSAGEM_ERRO_TOKEN_400);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/register-organizacao")
+    public ResponseEntity<com.avantt_backend.dto.ErrorResponse> registerOrganizacaoGet() {
+        com.avantt_backend.dto.ErrorResponse body = new com.avantt_backend.dto.ErrorResponse(HttpStatus.METHOD_NOT_ALLOWED.value(), "Method Not Allowed", "Use POST /api/auth/register-organizacao to create organization and user");
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).header("Allow", "POST, OPTIONS").body(body);
+    }
+
+    @PostMapping("/register-organizacao")
+    @Operation(summary = "Registrar organização e usuário (compatibilidade com frontend)")
+    public ResponseEntity<?> registerOrganizacao(@RequestBody(description = "Dados de organização e usuário", required = true,
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.RegisterOrganizacaoRequestDTO.class))) @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody com.avantt_backend.dto.RegisterOrganizacaoRequestDTO req) {
+
+        // Normalize: accept either nested objects (organizacao / usuario) or flattened fields
+        var orgReq = req.getOrganizacao();
+        if (orgReq == null) {
+            orgReq = new com.avantt_backend.dto.OrganizacaoRequestDTO();
+            orgReq.setNomeFantasia(req.getOrganizationName() != null ? req.getOrganizationName() : req.getOrganizationName());
+            orgReq.setCnpj(req.getCnpj());
+            orgReq.setEmailContato(req.getEmailContato());
+            orgReq.setIsAtivo(req.getIsAtivo());
+        }
+
+        var createdOrg = organizacaoService.create(orgReq);
+        Integer orgId = null;
+        try {
+            orgId = createdOrg.getId() == null ? null : Integer.valueOf(createdOrg.getId());
+        } catch (NumberFormatException ex) {
+            throw new com.avantt_backend.exception.ApiException("Erro ao criar organização");
+        }
+
+        var userReq = req.getUsuario();
+        if (userReq == null) {
+            userReq = new com.avantt_backend.dto.RegisterRequestDTO();
+            userReq.setName(req.getName());
+            userReq.setEmail(req.getEmail());
+            userReq.setPassword(req.getPassword());
+            userReq.setRole(req.getRole());
+        }
+
+        var createdUser = authService.register(userReq, orgId);
+        if (createdUser == null) throw new com.avantt_backend.exception.ConflictException(MENSAGEM_EMAIL_CADASTRADO_409);
+        // Return both Portuguese and English keys to be friendly to different frontends
+        java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
+        resp.put("organizacao", createdOrg);
+        resp.put("organization", createdOrg);
+        resp.put("usuario", createdUser);
+        resp.put("user", createdUser);
+        return ResponseEntity.status(201).body(resp);
     }
 }

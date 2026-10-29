@@ -53,6 +53,38 @@ public class AuthService {
         return dto;
     }
 
+    /**
+     * Register a user and optionally link to an existing organization id.
+     */
+    @Transactional
+    public UsuarioResponseDTO register(RegisterRequestDTO req, Integer organizacaoId) {
+        // reuse existing validation/normalization
+        String email = req.getEmail() == null ? null : req.getEmail().trim().toLowerCase();
+        if (email == null || email.isBlank()) {
+            throw new com.avantt_backend.exception.ApiException("email é obrigatório");
+        }
+
+        if (usuarioRepository.existsByEmail(email)) return null;
+
+        Usuario u = new Usuario();
+        u.setNome(req.getName());
+        u.setEmail(email);
+        u.setCargo(req.getRole());
+        u.setSenha(passwordEncoder.encode(req.getPassword()));
+        if (organizacaoId != null) u.setOrganizacaoId(organizacaoId);
+
+        Usuario saved = usuarioRepository.save(u);
+
+        UsuarioResponseDTO dto = new UsuarioResponseDTO();
+        dto.setId(saved.getId() == null ? null : String.valueOf(saved.getId()));
+        dto.setName(saved.getNome());
+        dto.setEmail(saved.getEmail());
+        dto.setRole(saved.getCargo());
+        dto.setAvatar(generateInitials(saved.getNome()));
+        dto.setColor("#2563eb");
+        return dto;
+    }
+
     @Transactional
     public AuthResponseDTO login(AuthRequestDTO req) {
         // normalize email to be case-insensitive and trim whitespace coming from the client
