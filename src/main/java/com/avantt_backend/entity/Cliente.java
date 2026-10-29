@@ -20,6 +20,9 @@ public class Cliente {
     @Column(name = "telefone")
     private String telefone;
 
+    @Column(name = "organizacao_id")
+    private Integer organizacaoId;
+
     @Column(name = "data_cadastro", insertable = false, updatable = false)
     private LocalDateTime dataCadastro;
 
@@ -42,6 +45,9 @@ public class Cliente {
 
     public String getTelefone() { return telefone; }
     public void setTelefone(String telefone) { this.telefone = telefone; }
+
+    public Integer getOrganizacaoId() { return organizacaoId; }
+    public void setOrganizacaoId(Integer organizacaoId) { this.organizacaoId = organizacaoId; }
 
     public LocalDateTime getDataCadastro() { return dataCadastro; }
     public void setDataCadastro(LocalDateTime dataCadastro) { this.dataCadastro = dataCadastro; }

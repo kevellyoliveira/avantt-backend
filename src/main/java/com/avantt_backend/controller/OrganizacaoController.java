@@ -47,14 +47,14 @@ public class OrganizacaoController {
         return ResponseEntity.status(201).body(created);
     }
 
-    @Operation(summary = "Atualizar organização", description = "Atualiza uma organização existente.")
+    @Operation(summary = "Atualizar organização", description = "Atualiza uma organização existente. Suporta PUT e PATCH")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Organização atualizada",
                      content = @Content(schema = @Schema(implementation = OrganizacaoResponseDTO.class))),
         @ApiResponse(responseCode = "404", description = "Organização não encontrada",
                      content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PutMapping(path = ORGANIZACOES + "/{id}", consumes = "application/json", produces = "application/json")
+    @RequestMapping(path = ORGANIZACOES + "/{id}", method = {RequestMethod.PUT, RequestMethod.PATCH}, consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> updateOrganizacao(@PathVariable Integer id, @Valid @RequestBody OrganizacaoRequestDTO request) {
         // If client included id in body, ensure it matches the path id
         if (request.getId() != null && !request.getId().equals(id)) {

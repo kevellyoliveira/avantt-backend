@@ -92,11 +92,14 @@ public class OrganizacaoService {
     private OrganizacaoResponseDTO toDto(Organizacao o) {
         OrganizacaoResponseDTO r = new OrganizacaoResponseDTO();
         r.setId(o.getId() == null ? null : String.valueOf(o.getId()));
-        r.setNomeFantasia(o.getNomeFantasia());
+        r.setName(o.getNomeFantasia());
+        // populate frontend-friendly aliases
+        r.setTradeName(o.getNomeFantasia());
+        // other fields (legalName, contact, phone, createdAt) are not stored in this entity; leave null
         // Always return CNPJ as digits-only (no máscara)
         r.setCnpj(o.getCnpj() == null ? null : o.getCnpj().replaceAll("\\D", ""));
-        r.setEmailContato(o.getEmailContato());
-        r.setIsAtivo(o.getIsAtivo());
+        r.setEmail(o.getEmailContato());
+        r.setIsActive(o.getIsAtivo());
         r.setDataDesativacao(o.getDataDesativacao());
         return r;
     }

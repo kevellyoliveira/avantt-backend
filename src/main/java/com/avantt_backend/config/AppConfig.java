@@ -85,8 +85,10 @@ public class AppConfig implements WebMvcConfigurer {
             HttpServletRequest req = (HttpServletRequest) servletRequest;
             HttpServletResponse res = (HttpServletResponse) servletResponse;
 
-            // Only wrap POST calls to the problematic path to reduce log noise
-            if (!"POST".equalsIgnoreCase(req.getMethod()) || !req.getRequestURI().contains("register-organizacao")) {
+            // Only wrap POST calls to the problematic paths to reduce log noise
+            // Include register-organizacao and clientes endpoints for debugging
+            if (!"POST".equalsIgnoreCase(req.getMethod()) || 
+                    !(req.getRequestURI().contains("register-organizacao") || req.getRequestURI().contains("/api/clientes"))) {
                 chain.doFilter(servletRequest, servletResponse);
                 return;
             }

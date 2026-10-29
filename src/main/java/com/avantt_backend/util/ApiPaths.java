@@ -20,5 +20,6 @@ public final class ApiPaths {
     public static final String USUARIOS = API + "/usuarios";
     public static final String ESTIMATIVAS = API + "/estimativas";
     public static final String ORGANIZACOES = API + "/organizacoes";
+    public static final String CLIENTES = API + "/clientes";
 
 }

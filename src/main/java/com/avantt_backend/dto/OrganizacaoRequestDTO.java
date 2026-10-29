@@ -1,5 +1,6 @@
 package com.avantt_backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -15,17 +16,21 @@ public class OrganizacaoRequestDTO {
     @Positive(message = "id inválido")
     private Integer id;
 
-    @NotBlank(message = "nomeFantasia é obrigatório")
+    @NotBlank(message = "name é obrigatório")
+    @JsonAlias({"name", "nome", "nomeFantasia"})
     private String nomeFantasia;
 
     // Accept either 14 digits (unformatted) or the common formatted CNPJ 00.000.000/0000-00
     @Pattern(regexp = "^(\\d{14}|\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2})$", message = "cnpj inválido. Use 14 dígitos ou 00.000.000/0000-00")
+    @JsonAlias({"cnpj", "document", "documento"})
     private String cnpj;
 
-    @Email(message = "emailContato inválido")
+    @Email(message = "email inválido")
     @Size(max = 255)
+    @JsonAlias({"email", "emailContato"})
     private String emailContato;
 
+    @JsonAlias({"isActive", "is_ativo", "isAtivo"})
     private Boolean isAtivo;
 
     public OrganizacaoRequestDTO() {}
