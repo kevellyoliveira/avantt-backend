@@ -6,7 +6,6 @@ import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.hibernate.exception.SQLGrammarException;
 import jakarta.persistence.PersistenceException;
 
 import java.util.ArrayList;
@@ -131,7 +130,7 @@ public class MetricsService {
             if (rows.isEmpty()) return 0.0;
             Object r = rows.get(0);
             return r == null ? 0.0 : ((Number) r).doubleValue();
-        } catch (PersistenceException | SQLGrammarException ex) {
+        } catch (PersistenceException ex) {
             // View missing or SQL error: fall back to inline aggregation to avoid crash
             logger.warn("vw_hours_estimated_by_project not available or query failed, falling back to inline SUM. Cause: {}", ex.getMessage());
             String fallback = "SELECT COALESCE(SUM(t.horas_estimadas),0) FROM tarefa t WHERE t.projeto_id = :pid";

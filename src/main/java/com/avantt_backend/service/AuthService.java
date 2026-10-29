@@ -40,6 +40,10 @@ public class AuthService {
         u.setEmail(email);
         u.setCargo(req.getRole());
         u.setSenha(passwordEncoder.encode(req.getPassword()));
+        // When users register via the public /register endpoint they don't provide a perfilId.
+        // Use a sensible default: "Colaborador" (id=4 in the seeded data).
+        // This avoids a DB constraint violation for perfil_id which is NOT NULL.
+        u.setPerfilId(4);
 
         Usuario saved = usuarioRepository.save(u);
 
@@ -72,6 +76,9 @@ public class AuthService {
         u.setCargo(req.getRole());
         u.setSenha(passwordEncoder.encode(req.getPassword()));
         if (organizacaoId != null) u.setOrganizacaoId(organizacaoId);
+        // When creating an organization together with the initial user, make that user an Administrator.
+        // The seeded Perfil table uses id=1 for 'Administrador'.
+        u.setPerfilId(1);
 
         Usuario saved = usuarioRepository.save(u);
 
