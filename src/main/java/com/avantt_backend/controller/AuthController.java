@@ -50,7 +50,10 @@ public class AuthController {
             })) @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody RegisterRequestDTO req) {
         var res = authService.register(req);
         if (res == null) throw new com.avantt_backend.exception.ConflictException(MENSAGEM_EMAIL_CADASTRADO_409);
-        return ResponseEntity.status(201).body(res);
+        java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
+        resp.put("usuario", res);
+        resp.put("user", res);
+        return ResponseEntity.status(201).body(resp);
     }
 
     @PostMapping("/login")

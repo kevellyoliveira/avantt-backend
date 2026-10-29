@@ -4,6 +4,10 @@ import com.avantt_backend.dto.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.hibernate.exception.SQLGrammarException;
+import jakarta.persistence.PersistenceException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +17,8 @@ public class MetricsService {
 
     @PersistenceContext
     private EntityManager em;
+
+    private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
 
     public List<MetricStatusCountDTO> getStatusDistribution(Integer projetoId) {
         // inline aggregation in case views are not present in the database
@@ -116,13 +122,26 @@ public class MetricsService {
     }
 
     public Double getHoursEstimated(Integer projetoId) {
-        String sql = "SELECT horas_estimadas_total FROM vw_hours_estimated_by_project WHERE projeto_id = :pid";
-        var q = em.createNativeQuery(sql);
-        q.setParameter("pid", projetoId);
-        @SuppressWarnings("unchecked")
-        List<Object> rows = q.getResultList();
-        if (rows.isEmpty()) return 0.0;
-        Object r = rows.get(0);
-        return r == null ? 0.0 : ((Number) r).doubleValue();
+        String viewSql = "SELECT horas_estimadas_total FROM vw_hours_estimated_by_project WHERE projeto_id = :pid";
+        try {
+            var q = em.createNativeQuery(viewSql);
+            q.setParameter("pid", projetoId);
+            @SuppressWarnings("unchecked")
+            List<Object> rows = q.getResultList();
+            if (rows.isEmpty()) return 0.0;
+            Object r = rows.get(0);
+            return r == null ? 0.0 : ((Number) r).doubleValue();
+        } catch (PersistenceException | SQLGrammarException ex) {
+            // View missing or SQL error: fall back to inline aggregation to avoid crash
+            logger.warn("vw_hours_estimated_by_project not available or query failed, falling back to inline SUM. Cause: {}", ex.getMessage());
+            String fallback = "SELECT COALESCE(SUM(t.horas_estimadas),0) FROM tarefa t WHERE t.projeto_id = :pid";
+            var q2 = em.createNativeQuery(fallback);
+            q2.setParameter("pid", projetoId);
+            @SuppressWarnings("unchecked")
+            List<Object> rows2 = q2.getResultList();
+            if (rows2.isEmpty()) return 0.0;
+            Object r2 = rows2.get(0);
+            return r2 == null ? 0.0 : ((Number) r2).doubleValue();
+        }
     }
 }
