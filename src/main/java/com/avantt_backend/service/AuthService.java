@@ -39,6 +39,7 @@ public class AuthService {
         u.setNome(req.getName());
         u.setEmail(email);
         u.setCargo(req.getRole());
+        u.setOrganizacaoId(1); // default to 0 for public registration
         u.setSenha(passwordEncoder.encode(req.getPassword()));
         // When users register via the public /register endpoint they don't provide a perfilId.
         // Use a sensible default: "Colaborador" (id=4 in the seeded data).
