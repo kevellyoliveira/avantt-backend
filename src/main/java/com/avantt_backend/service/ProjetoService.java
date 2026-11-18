@@ -64,6 +64,7 @@ public class ProjetoService {
             ProjetoMarcoRepository projetoMarcoRepository,
             ProjetoRiscoRepository projetoRiscoRepository) {
 
+
         this.projetoRepository = projetoRepository;
         this.usuarioRepository = usuarioRepository;
         this.projetoUsuarioRepository = projetoUsuarioRepository;
@@ -74,6 +75,30 @@ public class ProjetoService {
         this.clienteRepository = clienteRepository;
         this.projetoMarcoRepository = projetoMarcoRepository;
         this.projetoRiscoRepository = projetoRiscoRepository;
+    }
+
+    public List<ProjetoResponseDTO> listarPorOrganizacaoOuMembro(
+            Integer organizacaoId,
+            Integer usuarioId) {
+
+        // Busca os projetos dos quais o usuário participa
+        List<ProjetoUsuario> vinculos =
+                projetoUsuarioRepository.findByIdUsuarioId(usuarioId);
+
+        // Obtém os IDs dos projetos associados ao usuário
+        Set<Integer> projetosDoUsuario = vinculos.stream()
+                .map(pu -> pu.getId().getProjetoId())
+                .collect(Collectors.toSet());
+
+        // Retorna projetos da organização ou dos quais o usuário participa
+        return projetoRepository.findAll()
+                .stream()
+                .filter(projeto ->
+                        organizacaoId.equals(projeto.getOrganizacaoId())
+                                || projetosDoUsuario.contains(projeto.getId())
+                )
+                .map(this::toFrontend)
+                .collect(Collectors.toList());
     }
 
     // Retorna o progresso atual do projeto

@@ -189,7 +189,6 @@ public class TarefaService {
 
             sprint = sprintOpt.get();
 
-            // Garante que a sprint pertence ao projeto informado.
             if (!proj.getId().equals(sprint.getProjetoId())) {
                 throw new ApiException(
                         "A sprint informada não pertence ao projeto selecionado"
@@ -216,30 +215,10 @@ public class TarefaService {
             final Integer resolvedAssigneeId = assigneeId;
 
             /*
-             * Se a tarefa tiver sprint, verifica se o usuário
-             * está associado à sprint.
+             * OPÇÃO A:
+             * O responsável precisa pertencer ao projeto,
+             * mas não precisa estar associado à sprint.
              */
-            if (sprint != null) {
-
-                Integer sprintId = sprint.getId();
-
-                boolean memberSprint =
-                        sprintUsuarioRepository.findByIdSprintId(sprintId)
-                                .stream()
-                                .anyMatch(su ->
-                                        su.getId().getUsuarioId()
-                                                .equals(resolvedAssigneeId)
-                                );
-
-                if (!memberSprint) {
-                    throw new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "Usuário não está associado à sprint"
-                    );
-                }
-            }
-
-            // Verifica se o usuário pertence ao projeto.
             Integer projetoId = proj.getId();
 
             boolean memberProject =
@@ -270,7 +249,7 @@ public class TarefaService {
         t.setProject(proj.getName());
         t.setSprint(sprint != null ? sprint.getNome() : null);
 
-        // Responsável: ID persistido em atribuido_para.
+        // Responsável.
         t.setAssignee(assigneeId);
 
         t.setAvatar(dto.getAvatar() == null ? "" : dto.getAvatar());
@@ -332,7 +311,6 @@ public class TarefaService {
         // Data de entrega.
         if (dto.getPlannedEnd() != null) {
 
-            // Só valida a data final da sprint quando houver sprint.
             if (sprint != null
                     && sprint.getDataFim() != null
                     && dto.getPlannedEnd().isAfter(sprint.getDataFim())) {
@@ -472,30 +450,11 @@ public class TarefaService {
                 );
             }
 
-            Integer sprintId = t.getSprintId();
-
             /*
-             * Se a tarefa estiver em uma sprint, verifica a associação
-             * do usuário à sprint.
+             * OPÇÃO A:
+             * Não exige associação do responsável à sprint.
+             * Exige somente que ele seja membro do projeto da tarefa.
              */
-            if (sprintId != null) {
-
-                boolean memberSprint =
-                        sprintUsuarioRepository.findByIdSprintId(sprintId)
-                                .stream()
-                                .anyMatch(su ->
-                                        su.getId().getUsuarioId()
-                                                .equals(dto.getAssigneeId())
-                                );
-
-                if (!memberSprint) {
-                    throw new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "Usuário não está associado à sprint"
-                    );
-                }
-            }
-
             Integer projetoId = t.getProjetoId();
 
             boolean memberProject =
@@ -584,10 +543,6 @@ public class TarefaService {
         // Data de entrega.
         if (dto.getPlannedEnd() != null) {
 
-            /*
-             * Quando não existe sprint, não há data final de sprint
-             * para validar. A data da tarefa pode ser atualizada normalmente.
-             */
             if (t.getSprintId() != null) {
 
                 var sprintOpt = sprintRepository.findById(t.getSprintId());
@@ -660,31 +615,24 @@ public class TarefaService {
                         ? newProjetoId != null
                         : !oldProjetoId.equals(newProjetoId);
 
-        // Se saiu de uma sprint, recalcula a sprint anterior.
         if (oldSprintId != null
                 && !oldSprintId.equals(newSprintId)) {
 
             scheduleSprintProgressRecalculation(oldSprintId);
         }
 
-        // Se está em uma sprint, recalcula a sprint atual.
         if (newSprintId != null
                 && (statusAlterado || sprintAlterada || projetoAlterado)) {
 
             scheduleSprintProgressRecalculation(newSprintId);
         }
 
-        /*
-         * Se está no backlog, recalcula diretamente o projeto.
-         * Também atualiza o projeto quando a tarefa muda de projeto.
-         */
         if (newSprintId == null
                 && (statusAlterado || projetoAlterado || sprintAlterada)) {
 
             scheduleProjectProgressRecalculation(newProjetoId);
         }
 
-        // Se mudou de projeto, atualiza também o projeto anterior.
         if (projetoAlterado && oldProjetoId != null) {
             scheduleProjectProgressRecalculation(oldProjetoId);
         }
@@ -895,7 +843,8 @@ public class TarefaService {
     }
 
     /*
-     * Lista usuários associados à sprint da tarefa.
+     * Lista usuários associados ao projeto da tarefa.
+     * Não exige que o usuário esteja associado à sprint.
      */
     public List<Map<String, Object>> listUsersForTask(Integer tarefaId) {
 
@@ -910,18 +859,18 @@ public class TarefaService {
 
         Tarefa t = tOpt.get();
 
-        if (t.getSprintId() == null) {
+        if (t.getProjetoId() == null) {
             return Collections.emptyList();
         }
 
-        var sus =
-                sprintUsuarioRepository.findByIdSprintId(t.getSprintId());
+        var membrosProjeto =
+                projetoUsuarioRepository.findByIdProjetoId(t.getProjetoId());
 
         List<Map<String, Object>> out = new ArrayList<>();
 
-        for (var su : sus) {
+        for (var membro : membrosProjeto) {
 
-            Integer uid = su.getId().getUsuarioId();
+            Integer uid = membro.getId().getUsuarioId();
 
             usuarioRepository.findById(uid).ifPresent(u -> {
 
@@ -977,26 +926,10 @@ public class TarefaService {
         }
 
         /*
-         * Se a tarefa tiver sprint, verifica a associação do usuário
-         * à sprint. Para tarefas do backlog, essa validação não se aplica.
+         * OPÇÃO A:
+         * O responsável precisa pertencer ao projeto da tarefa.
+         * Não precisa estar associado à sprint.
          */
-        if (t.getSprintId() != null) {
-
-            boolean memberSprint =
-                    sprintUsuarioRepository.findByIdSprintId(t.getSprintId())
-                            .stream()
-                            .anyMatch(su ->
-                                    su.getId().getUsuarioId().equals(assigneeId)
-                            );
-
-            if (!memberSprint) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Usuário não está associado à sprint"
-                );
-            }
-        }
-
         if (t.getProjetoId() == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -1076,10 +1009,6 @@ public class TarefaService {
 
         TarefaResponseDTO response = toResponse(saved);
 
-        /*
-         * Tarefa com sprint:
-         * recalcula o progresso da sprint, que também recalcula o projeto.
-         */
         if (saved.getSprintId() != null) {
 
             SprintService.ProgressInfo info =
@@ -1093,10 +1022,6 @@ public class TarefaService {
 
         } else {
 
-            /*
-             * Tarefa do backlog:
-             * recalcula diretamente o progresso do projeto.
-             */
             scheduleProjectProgressRecalculation(saved.getProjetoId());
         }
 
@@ -1153,6 +1078,10 @@ public class TarefaService {
         r.setTitle(
                 t.getTitulo() == null ? "" : t.getTitulo()
         );
+
+        // Identificadores do projeto e da sprint.
+        r.setProjectId(t.getProjetoId());
+        r.setSprintId(t.getSprintId());
 
         // Projeto.
         String project = t.getProject();

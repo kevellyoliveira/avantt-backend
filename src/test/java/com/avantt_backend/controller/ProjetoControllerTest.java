@@ -50,6 +50,7 @@ class ProjetoControllerTest {
     private static final String TOKEN = "token-teste";
     private static final String AUTHORIZATION = "Bearer " + TOKEN;
     private static final Integer ORGANIZACAO_ID = 1;
+    private static final Integer USUARIO_ID = 10;
 
     @Mock
     private ProjetoService projetoService;
@@ -78,7 +79,7 @@ class ProjetoControllerTest {
 
         Usuario usuario = new Usuario();
 
-        usuario.setId(10);
+        usuario.setId(USUARIO_ID);
         usuario.setNome("Administrador");
         usuario.setEmail("admin@example.com");
         usuario.setOrganizacaoId(ORGANIZACAO_ID);
@@ -277,7 +278,10 @@ class ProjetoControllerTest {
 
         configurarAutenticacao();
 
-        when(projetoService.listAll()).thenReturn(List.of());
+        when(projetoService.listarPorOrganizacaoOuMembro(
+                ORGANIZACAO_ID,
+                USUARIO_ID
+        )).thenReturn(List.of());
 
         mockMvc.perform(get("/api/projetos")
                         .header("Authorization", AUTHORIZATION)
@@ -287,7 +291,10 @@ class ProjetoControllerTest {
 
         verify(authService).obterUsuarioAutenticado(TOKEN);
 
-        verify(projetoService).listAll();
+        verify(projetoService).listarPorOrganizacaoOuMembro(
+                ORGANIZACAO_ID,
+                USUARIO_ID
+        );
     }
 
     @Test
@@ -301,8 +308,10 @@ class ProjetoControllerTest {
         projeto.setName("Portal");
         projeto.setOrganizacaoId(ORGANIZACAO_ID);
 
-        when(projetoService.listAll())
-                .thenReturn(List.of(projeto));
+        when(projetoService.listarPorOrganizacaoOuMembro(
+                ORGANIZACAO_ID,
+                USUARIO_ID
+        )).thenReturn(List.of(projeto));
 
         mockMvc.perform(get("/api/projetos")
                         .header("Authorization", AUTHORIZATION)
@@ -312,6 +321,10 @@ class ProjetoControllerTest {
                 .andExpect(jsonPath("$[0].name").value("Portal"));
 
         verify(authService).obterUsuarioAutenticado(TOKEN);
-        verify(projetoService).listAll();
+
+        verify(projetoService).listarPorOrganizacaoOuMembro(
+                ORGANIZACAO_ID,
+                USUARIO_ID
+        );
     }
 }

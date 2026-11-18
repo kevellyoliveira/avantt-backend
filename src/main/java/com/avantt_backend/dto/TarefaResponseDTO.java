@@ -9,10 +9,16 @@ public class TarefaResponseDTO {
 
     private String id;
     private String title;
+
     private String project;
+    private Integer projectId;
+
     private String sprint;
+    private Integer sprintId;
+
     private String assignee;
     private Integer assigneeId;
+
     private String avatar;
     private String avatarColor;
     private String priority;
@@ -57,12 +63,28 @@ public class TarefaResponseDTO {
         this.project = project;
     }
 
+    public Integer getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(Integer projectId) {
+        this.projectId = projectId;
+    }
+
     public String getSprint() {
         return sprint;
     }
 
     public void setSprint(String sprint) {
         this.sprint = sprint;
+    }
+
+    public Integer getSprintId() {
+        return sprintId;
+    }
+
+    public void setSprintId(Integer sprintId) {
+        this.sprintId = sprintId;
     }
 
     public String getAssignee() {

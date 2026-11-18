@@ -303,27 +303,32 @@ class TarefaServiceTest {
         verify(sprintService).recalculateAndPersistProgress(2);
     }
 
+
     @Test
     void listUsersForTask_buildsUserList() {
 
+        // Cria uma tarefa vinculada ao projeto 1.
         Tarefa tarefa = new Tarefa();
 
         tarefa.setId(7);
+        tarefa.setProjetoId(1);
         tarefa.setSprintId(3);
 
         when(tarefaRepository.findById(7))
                 .thenReturn(Optional.of(tarefa));
 
-        com.avantt_backend.entity.SprintUsuario sprintUsuario =
-                new com.avantt_backend.entity.SprintUsuario();
+        // Cria um membro associado ao projeto.
+        com.avantt_backend.entity.ProjetoUsuario projetoUsuario =
+                new com.avantt_backend.entity.ProjetoUsuario();
 
-        sprintUsuario.setId(
-                new com.avantt_backend.entity.SprintUsuarioId(3, 11)
+        projetoUsuario.setId(
+                new com.avantt_backend.entity.ProjetoUsuarioId(1, 11)
         );
 
-        when(sprintUsuarioRepository.findByIdSprintId(3))
-                .thenReturn(List.of(sprintUsuario));
+        when(projetoUsuarioRepository.findByIdProjetoId(1))
+                .thenReturn(List.of(projetoUsuario));
 
+        // Simula o usuário.
         com.avantt_backend.entity.Usuario usuario =
                 new com.avantt_backend.entity.Usuario();
 
@@ -334,9 +339,21 @@ class TarefaServiceTest {
         when(usuarioRepository.findById(11))
                 .thenReturn(Optional.of(usuario));
 
+        // Executa o método.
         var list = tarefaService.listUsersForTask(7);
 
+        // Verifica o resultado.
         assertEquals(1, list.size());
         assertEquals(11, list.get(0).get("id"));
+        assertEquals("Alice", list.get(0).get("nome"));
+        assertEquals("a@x", list.get(0).get("email"));
+
+        // Verifica se a busca foi feita pelo projeto.
+        verify(projetoUsuarioRepository).findByIdProjetoId(1);
+        verify(usuarioRepository).findById(11);
+
+        // Não deve mais buscar os usuários pela sprint.
+        verifyNoInteractions(sprintUsuarioRepository);
     }
+
 }

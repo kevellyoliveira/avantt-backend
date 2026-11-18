@@ -148,6 +148,7 @@ class ControllersSmokeTest {
         String authorization = "Bearer " + token;
 
         Integer organizacaoId = 1;
+        Integer usuarioId = 10;
 
         ProjetoRequestDTO req = new ProjetoRequestDTO();
         req.setName("P");
@@ -158,7 +159,7 @@ class ControllersSmokeTest {
         res.setOrganizacaoId(organizacaoId);
 
         Usuario usuarioAutenticado = new Usuario();
-        usuarioAutenticado.setId(10);
+        usuarioAutenticado.setId(usuarioId);
         usuarioAutenticado.setNome("Administrador");
         usuarioAutenticado.setEmail("admin@example.com");
         usuarioAutenticado.setOrganizacaoId(organizacaoId);
@@ -180,9 +181,11 @@ class ControllersSmokeTest {
         verify(authService).obterUsuarioAutenticado(token);
         verify(projetoService).create(req, organizacaoId);
 
-        // Listagem
-        when(projetoService.listAll())
-                .thenReturn(List.of(res));
+        // Listagem por organização ou membro
+        when(projetoService.listarPorOrganizacaoOuMembro(
+                organizacaoId,
+                usuarioId
+        )).thenReturn(List.of(res));
 
         ResponseEntity<?> l = projetoController.listProjetos(
                 authorization
@@ -190,7 +193,10 @@ class ControllersSmokeTest {
 
         assertEquals(200, l.getStatusCode().value());
 
-        verify(projetoService).listAll();
+        verify(projetoService).listarPorOrganizacaoOuMembro(
+                organizacaoId,
+                usuarioId
+        );
 
         // Busca por ID
         when(projetoService.buscarPorId(1, organizacaoId))

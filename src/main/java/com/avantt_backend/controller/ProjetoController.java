@@ -4,6 +4,7 @@ package com.avantt_backend.controller;
 import com.avantt_backend.dto.ProjetoResponseDTO;
 import com.avantt_backend.dto.ErrorResponse;
 import com.avantt_backend.dto.ProjetoRequestDTO;
+import com.avantt_backend.entity.Usuario;
 import com.avantt_backend.service.ProjetoService;
 import com.avantt_backend.service.AuthService;
 
@@ -27,7 +28,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.stream.Collectors;
 
 import static com.avantt_backend.util.ApiPaths.PROJETOS;
 import static com.avantt_backend.util.Mensagens.*;
@@ -52,7 +52,7 @@ public class ProjetoController {
     // AUTENTICAÇÃO E ORGANIZAÇÃO
     // =========================================================
 
-    private Integer obterOrganizacaoId(String authorization) {
+    private Usuario obterUsuarioAutenticado(String authorization) {
 
         if (authorization == null
                 || !authorization.startsWith("Bearer ")) {
@@ -65,7 +65,7 @@ public class ProjetoController {
 
         String token = authorization.substring(7);
 
-        var usuario = authService.obterUsuarioAutenticado(token);
+        Usuario usuario = authService.obterUsuarioAutenticado(token);
 
         if (usuario == null || usuario.getOrganizacaoId() == null) {
 
@@ -75,7 +75,11 @@ public class ProjetoController {
             );
         }
 
-        return usuario.getOrganizacaoId();
+        return usuario;
+    }
+
+    private Integer obterOrganizacaoId(String authorization) {
+        return obterUsuarioAutenticado(authorization).getOrganizacaoId();
     }
 
     // =========================================================
@@ -317,7 +321,7 @@ public class ProjetoController {
 
     @Operation(
             summary = "Listar projetos",
-            description = "Retorna os projetos vinculados à organização do usuário autenticado."
+            description = "Retorna os projetos da organização do usuário autenticado e também os projetos nos quais ele está cadastrado como membro."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -359,14 +363,13 @@ public class ProjetoController {
                     required = false
             ) String authorization) {
 
-        Integer organizacaoId = obterOrganizacaoId(authorization);
+        Usuario usuario = obterUsuarioAutenticado(authorization);
 
-        List<ProjetoResponseDTO> list = projetoService.listAll()
-                .stream()
-                .filter(projeto ->
-                        organizacaoId.equals(projeto.getOrganizacaoId())
-                )
-                .collect(Collectors.toList());
+        List<ProjetoResponseDTO> list =
+                projetoService.listarPorOrganizacaoOuMembro(
+                        usuario.getOrganizacaoId(),
+                        usuario.getId()
+                );
 
         if (list.isEmpty()) {
             throw new com.avantt_backend.exception.ResourceNotFoundException(
