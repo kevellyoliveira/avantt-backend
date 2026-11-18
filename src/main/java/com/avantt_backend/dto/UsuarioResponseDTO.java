@@ -1,8 +1,10 @@
+
 package com.avantt_backend.dto;
 
 import java.util.List;
 
 public class UsuarioResponseDTO {
+
     private String id;
     private String name;
     private String avatar;
@@ -12,34 +14,87 @@ public class UsuarioResponseDTO {
     private List<String> projects;
     private int workload;
     private String email;
+    private Integer organizacaoId;
 
     public UsuarioResponseDTO() {}
 
-    // getters and setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public String getId() {
+        return id;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getAvatar() { return avatar; }
-    public void setAvatar(String avatar) { this.avatar = avatar; }
+    public String getName() {
+        return name;
+    }
 
-    public String getColor() { return color; }
-    public void setColor(String color) { this.color = color; }
+    public void setName(String name) {
+        this.name = name;
+    }
 
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public String getAvatar() {
+        return avatar;
+    }
 
-    public TasksDTO getTasks() { return tasks; }
-    public void setTasks(TasksDTO tasks) { this.tasks = tasks; }
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
 
-    public List<String> getProjects() { return projects; }
-    public void setProjects(List<String> projects) { this.projects = projects; }
+    public String getColor() {
+        return color;
+    }
 
-    public int getWorkload() { return workload; }
-    public void setWorkload(int workload) { this.workload = workload; }
+    public void setColor(String color) {
+        this.color = color;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public TasksDTO getTasks() {
+        return tasks;
+    }
+
+    public void setTasks(TasksDTO tasks) {
+        this.tasks = tasks;
+    }
+
+    public List<String> getProjects() {
+        return projects;
+    }
+
+    public void setProjects(List<String> projects) {
+        this.projects = projects;
+    }
+
+    public int getWorkload() {
+        return workload;
+    }
+
+    public void setWorkload(int workload) {
+        this.workload = workload;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public Integer getOrganizacaoId() {
+        return organizacaoId;
+    }
+
+    public void setOrganizacaoId(Integer organizacaoId) {
+        this.organizacaoId = organizacaoId;
+    }
 }

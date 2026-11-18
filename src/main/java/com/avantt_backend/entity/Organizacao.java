@@ -17,7 +17,8 @@ public class Organizacao {
     @Column(name = "cnpj", length = 20, unique = true)
     private String cnpj;
 
-    @Column(name = "email_contato")
+    // DB schema in this project uses column name `email` for the organization contact email.
+    @Column(name = "email")
     private String emailContato;
 
     @Column(name = "is_ativo")

@@ -40,7 +40,7 @@ public class OrganizacaoController {
         @ApiResponse(responseCode = "500", description = "Erro interno",
                      content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PostMapping(path = ORGANIZACOES, consumes = "application/json", produces = "application/json")
+    @PostMapping(path = {ORGANIZACOES, "/organizacoes"}, consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> createOrganizacao(@Valid @RequestBody OrganizacaoRequestDTO request) {
         OrganizacaoResponseDTO created = organizacaoService.create(request);
         if (created == null) throw new com.avantt_backend.exception.ConflictException("Erro ao criar organização");
@@ -54,7 +54,7 @@ public class OrganizacaoController {
         @ApiResponse(responseCode = "404", description = "Organização não encontrada",
                      content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @RequestMapping(path = ORGANIZACOES + "/{id}", method = {RequestMethod.PUT, RequestMethod.PATCH}, consumes = "application/json", produces = "application/json")
+    @RequestMapping(path = {ORGANIZACOES + "/{id}", "/organizacoes/{id}"}, method = {RequestMethod.PUT, RequestMethod.PATCH}, consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> updateOrganizacao(@PathVariable Integer id, @Valid @RequestBody OrganizacaoRequestDTO request) {
         // If client included id in body, ensure it matches the path id
         if (request.getId() != null && !request.getId().equals(id)) {
@@ -67,7 +67,7 @@ public class OrganizacaoController {
     }
 
     @Operation(summary = "Listar organizações", description = "Retorna todas as organizações ou, se o parâmetro query 'id' for fornecido, retorna apenas a organização informada.")
-    @GetMapping(path = ORGANIZACOES, produces = "application/json")
+    @GetMapping(path = {ORGANIZACOES, "/organizacoes"}, produces = "application/json")
     public ResponseEntity<?> listAll(
             @Parameter(in = ParameterIn.QUERY,
                        description = "ID da organização (opcional). Se fornecido, o resultado conterá apenas a organização com este id.",
@@ -91,7 +91,7 @@ public class OrganizacaoController {
         @ApiResponse(responseCode = "404", description = "Organização não encontrada",
                      content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @GetMapping(path = ORGANIZACOES + "/{id}", produces = "application/json")
+    @GetMapping(path = {ORGANIZACOES + "/{id}", "/organizacoes/{id}"}, produces = "application/json")
     public ResponseEntity<?> getOrganizacaoById(
             @Parameter(in = ParameterIn.PATH,
                        description = "ID da organização",

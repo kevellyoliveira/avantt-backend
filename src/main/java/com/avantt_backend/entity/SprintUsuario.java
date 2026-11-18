@@ -1,3 +1,4 @@
+
 package com.avantt_backend.entity;
 
 import jakarta.persistence.*;
@@ -9,7 +10,8 @@ public class SprintUsuario {
     @EmbeddedId
     private SprintUsuarioId id;
 
-    @Column(name = "papel")
+    // Campo não persistido, pois a coluna papel não existe na tabela.
+    @Transient
     private String papel;
 
     public SprintUsuario() {}
@@ -19,9 +21,19 @@ public class SprintUsuario {
         this.papel = papel;
     }
 
-    public SprintUsuarioId getId() { return id; }
-    public void setId(SprintUsuarioId id) { this.id = id; }
+    public SprintUsuarioId getId() {
+        return id;
+    }
 
-    public String getPapel() { return papel; }
-    public void setPapel(String papel) { this.papel = papel; }
+    public void setId(SprintUsuarioId id) {
+        this.id = id;
+    }
+
+    public String getPapel() {
+        return papel;
+    }
+
+    public void setPapel(String papel) {
+        this.papel = papel;
+    }
 }

@@ -1,14 +1,15 @@
+
 package com.avantt_backend.service;
 
 import com.avantt_backend.dto.TarefaRequestDTO;
 import com.avantt_backend.dto.TarefaResponseDTO;
+import com.avantt_backend.entity.Prioridade;
 import com.avantt_backend.entity.Projeto;
 import com.avantt_backend.entity.Sprint;
 import com.avantt_backend.entity.Status;
 import com.avantt_backend.entity.Tarefa;
 import com.avantt_backend.exception.ApiException;
 import com.avantt_backend.exception.ResourceNotFoundException;
-import com.avantt_backend.repository.ExistenceRepository;
 import com.avantt_backend.repository.PrioridadeRepository;
 import com.avantt_backend.repository.ProjetoRepository;
 import com.avantt_backend.repository.ProjetoUsuarioRepository;
@@ -76,29 +77,48 @@ class TarefaServiceTest {
     private TarefaService tarefaService;
 
     private TarefaRequestDTO buildValidDto() {
+
         TarefaRequestDTO dto = new TarefaRequestDTO();
+
         dto.setTitle("Fix login");
         dto.setProjectId(1);
         dto.setSprintId(2);
         dto.setStatusId(1);
+        dto.setPrioridadeId(1);
         dto.setPlannedEnd(LocalDate.now().plusDays(5));
         dto.setTagIds(List.of(1));
+
         return dto;
+    }
+
+    private Prioridade buildPrioridade() {
+
+        Prioridade prioridade = new Prioridade();
+
+        prioridade.setId(1);
+        prioridade.setNome("Média");
+
+        return prioridade;
     }
 
     @Test
     void create_throwsWhenNoTitle() {
+
         TarefaRequestDTO dto = new TarefaRequestDTO();
 
         assertThrows(
                 IllegalArgumentException.class,
                 () -> tarefaService.create(dto)
         );
+
+        verifyNoInteractions(projetoRepository);
     }
 
     @Test
     void create_throwsWhenProjectNotFound() {
+
         TarefaRequestDTO dto = new TarefaRequestDTO();
+
         dto.setTitle("T1");
         dto.setProjectId(1);
 
@@ -113,9 +133,11 @@ class TarefaServiceTest {
 
     @Test
     void create_withValidData_savesAndSchedulesRecalc() {
+
         TarefaRequestDTO dto = buildValidDto();
 
         Projeto projeto = new Projeto();
+
         projeto.setId(1);
         projeto.setName("P");
 
@@ -123,14 +145,22 @@ class TarefaServiceTest {
                 .thenReturn(Optional.of(projeto));
 
         Sprint sprint = new Sprint();
+
         sprint.setId(2);
+        sprint.setProjetoId(1);
         sprint.setNome("S");
         sprint.setDataFim(LocalDate.now().plusDays(10));
 
         when(sprintRepository.findById(2))
                 .thenReturn(Optional.of(sprint));
 
+        Prioridade prioridade = buildPrioridade();
+
+        when(prioridadeRepository.findById(1))
+                .thenReturn(Optional.of(prioridade));
+
         Status status = new Status();
+
         status.setId(1);
         status.setNome("To Do");
 
@@ -139,9 +169,12 @@ class TarefaServiceTest {
 
         when(tarefaRepository.save(any(Tarefa.class)))
                 .thenAnswer(invocation -> {
+
                     Tarefa tarefa = invocation.getArgument(0);
+
                     tarefa.setId(100);
                     tarefa.setSprintId(2);
+
                     return tarefa;
                 });
 
@@ -161,13 +194,16 @@ class TarefaServiceTest {
         verify(tarefaRepository).save(any(Tarefa.class));
         verify(tarefaTagRepository).deleteByIdTarefaId(100);
         verify(tarefaTagRepository).save(any());
+        verify(sprintService).recalculateAndPersistProgress(2);
     }
 
     @Test
     void create_plannedEndAfterSprint_throwsApiException() {
+
         TarefaRequestDTO dto = buildValidDto();
 
         Projeto projeto = new Projeto();
+
         projeto.setId(1);
         projeto.setName("P");
 
@@ -175,14 +211,22 @@ class TarefaServiceTest {
                 .thenReturn(Optional.of(projeto));
 
         Sprint sprint = new Sprint();
+
         sprint.setId(2);
+        sprint.setProjetoId(1);
         sprint.setNome("S");
         sprint.setDataFim(LocalDate.now().plusDays(1));
 
         when(sprintRepository.findById(2))
                 .thenReturn(Optional.of(sprint));
 
+        Prioridade prioridade = buildPrioridade();
+
+        when(prioridadeRepository.findById(1))
+                .thenReturn(Optional.of(prioridade));
+
         Status status = new Status();
+
         status.setId(1);
         status.setNome("To Do");
 
@@ -199,10 +243,13 @@ class TarefaServiceTest {
         assertTrue(
                 ex.getMessage().contains("data de fim da sprint")
         );
+
+        verify(tarefaRepository, never()).save(any(Tarefa.class));
     }
 
     @Test
     void update_nonExisting_throwsNotFound() {
+
         TarefaRequestDTO dto = buildValidDto();
 
         when(tarefaRepository.findById(99))
@@ -213,12 +260,17 @@ class TarefaServiceTest {
                 () -> tarefaService.update(99, dto)
         );
 
-        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        assertEquals(
+                HttpStatus.NOT_FOUND,
+                ex.getStatusCode()
+        );
     }
 
     @Test
     void updateStatus_callsRecalcAndReturns() {
+
         Tarefa tarefa = new Tarefa();
+
         tarefa.setId(5);
         tarefa.setSprintId(2);
         tarefa.setStatusId(1);
@@ -227,6 +279,7 @@ class TarefaServiceTest {
                 .thenReturn(Optional.of(tarefa));
 
         Status status = new Status();
+
         status.setId(2);
         status.setNome("Done");
 
@@ -252,7 +305,9 @@ class TarefaServiceTest {
 
     @Test
     void listUsersForTask_buildsUserList() {
+
         Tarefa tarefa = new Tarefa();
+
         tarefa.setId(7);
         tarefa.setSprintId(3);
 
