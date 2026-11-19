@@ -1,4 +1,3 @@
-
 package com.avantt_backend.service;
 
 import com.avantt_backend.dto.ProjetoRequestDTO;
@@ -44,6 +43,7 @@ public class ProjetoService {
     private final ClienteRepository clienteRepository;
     private final ProjetoMarcoRepository projetoMarcoRepository;
     private final ProjetoRiscoRepository projetoRiscoRepository;
+    private final ConviteService conviteService;
 
     private static final List<String> STATUS_VALIDOS = Arrays.asList(
             "Planejada",
@@ -62,8 +62,8 @@ public class ProjetoService {
             OrganizacaoRepository organizacaoRepository,
             ClienteRepository clienteRepository,
             ProjetoMarcoRepository projetoMarcoRepository,
-            ProjetoRiscoRepository projetoRiscoRepository) {
-
+            ProjetoRiscoRepository projetoRiscoRepository,
+            ConviteService conviteService) {
 
         this.projetoRepository = projetoRepository;
         this.usuarioRepository = usuarioRepository;
@@ -75,22 +75,20 @@ public class ProjetoService {
         this.clienteRepository = clienteRepository;
         this.projetoMarcoRepository = projetoMarcoRepository;
         this.projetoRiscoRepository = projetoRiscoRepository;
+        this.conviteService = conviteService;
     }
 
     public List<ProjetoResponseDTO> listarPorOrganizacaoOuMembro(
             Integer organizacaoId,
             Integer usuarioId) {
 
-        // Busca os projetos dos quais o usuário participa
         List<ProjetoUsuario> vinculos =
                 projetoUsuarioRepository.findByIdUsuarioId(usuarioId);
 
-        // Obtém os IDs dos projetos associados ao usuário
         Set<Integer> projetosDoUsuario = vinculos.stream()
                 .map(pu -> pu.getId().getProjetoId())
                 .collect(Collectors.toSet());
 
-        // Retorna projetos da organização ou dos quais o usuário participa
         return projetoRepository.findAll()
                 .stream()
                 .filter(projeto ->
@@ -118,7 +116,6 @@ public class ProjetoService {
         p.setDescription(dto.getDescription());
         p.setColor(dto.getColor());
 
-        // Status
         String status = dto.getStatus() == null
                 ? "Planejada"
                 : dto.getStatus();
@@ -126,7 +123,6 @@ public class ProjetoService {
         validarStatus(status);
         p.setStatus(status);
 
-        // Cliente
         if (dto.getClienteId() != null) {
 
             if (!clienteRepository.existsById(dto.getClienteId())) {
@@ -139,7 +135,6 @@ public class ProjetoService {
             p.setClienteId(dto.getClienteId());
         }
 
-        // Organização recuperada do usuário autenticado
         if (organizacaoId == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -156,14 +151,12 @@ public class ProjetoService {
 
         p.setOrganizacaoId(organizacaoId);
 
-        // Datas
         p.setStartDate(dto.getStartDate());
 
         validarPeriodo(dto.getStartDate(), dto.getEndDate());
 
         p.setEndDate(dto.getEndDate());
 
-        // Progresso: inicia em zero quando não informado
         p.setProgress(
                 dto.getProgress() != null
                         ? dto.getProgress()
@@ -172,17 +165,15 @@ public class ProjetoService {
 
         Projeto saved = projetoRepository.save(p);
 
-        // Associar equipe ao projeto
+        // Associar equipe ao projeto.
+        // Usuários sem primeiro acesso validado receberão convite.
         if (dto.getTeam() != null) {
             for (Integer usuarioId : dto.getTeam()) {
                 adicionarUsuarioEquipe(saved, usuarioId);
             }
         }
 
-        // Salvar marcos
         salvarMarcos(saved, dto.getMilestones());
-
-        // Salvar riscos
         salvarRiscos(saved, dto.getRisks());
 
         return toFrontend(saved);
@@ -195,7 +186,6 @@ public class ProjetoService {
             ProjetoRequestDTO dto,
             Integer organizacaoId) {
 
-        // Busca o projeto somente dentro da organização autenticada
         Projeto p = projetoRepository
                 .findByIdAndOrganizacaoId(projetoId, organizacaoId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -203,7 +193,6 @@ public class ProjetoService {
                         "Projeto não encontrado: id=" + projetoId
                 ));
 
-        // Atualizar cliente
         if (dto.getClienteId() != null) {
 
             if (!clienteRepository.existsById(dto.getClienteId())) {
@@ -216,10 +205,6 @@ public class ProjetoService {
             p.setClienteId(dto.getClienteId());
         }
 
-        // A organização não é alterada pelo DTO.
-        // Ela é definida pelo usuário autenticado.
-
-        // Atualizar campos básicos
         if (dto.getName() != null) {
             p.setName(dto.getName());
         }
@@ -232,13 +217,11 @@ public class ProjetoService {
             p.setColor(dto.getColor());
         }
 
-        // Atualizar status
         if (dto.getStatus() != null) {
             validarStatus(dto.getStatus());
             p.setStatus(dto.getStatus());
         }
 
-        // Atualizar datas
         LocalDate newStart = dto.getStartDate() == null
                 ? p.getStartDate()
                 : dto.getStartDate();
@@ -252,17 +235,14 @@ public class ProjetoService {
         p.setStartDate(newStart);
         p.setEndDate(newEnd);
 
-        // Atualizar progresso somente quando informado
         if (dto.getProgress() != null) {
             p.setProgress(dto.getProgress());
         }
 
-        // Atualizar equipe completa, quando enviada
         if (dto.getTeam() != null) {
             sincronizarEquipe(p, dto.getTeam());
         }
 
-        // Compatibilidade com atualização incremental da equipe
         if (dto.getAddTeam() != null && !dto.getAddTeam().isEmpty()) {
             for (Integer usuarioId : dto.getAddTeam()) {
                 adicionarUsuarioEquipe(p, usuarioId);
@@ -275,12 +255,10 @@ public class ProjetoService {
             }
         }
 
-        // Atualizar marcos somente quando a lista for enviada
         if (dto.getMilestones() != null) {
             salvarMarcos(p, dto.getMilestones());
         }
 
-        // Atualizar riscos somente quando a lista for enviada
         if (dto.getRisks() != null) {
             salvarRiscos(p, dto.getRisks());
         }
@@ -507,6 +485,9 @@ public class ProjetoService {
             pu.setPapel(null);
 
             projetoUsuarioRepository.save(pu);
+
+            // Envia convite somente se o primeiro acesso ainda não foi validado.
+            conviteService.convidarSeNecessario(usuarioId);
         }
     }
 
@@ -559,7 +540,6 @@ public class ProjetoService {
         f.setDescription(p.getDescription());
         f.setColor(p.getColor());
 
-        // Status vem diretamente da coluna status
         f.setStatus(p.getStatus());
         f.setStatusName(p.getStatus());
         f.setStatusId(null);
@@ -634,14 +614,12 @@ public class ProjetoService {
                             .replace("ú", "u")
                             .replace("ã", "a");
 
-                    // Contabilizar tarefas concluídas
                     if (statusNormalizado.equals("concluida")
                             || statusNormalizado.equals("concluido")
                             || statusNormalizado.equals("done")) {
                         tDone++;
                     }
 
-                    // Contabilizar tarefas canceladas
                     if (statusNormalizado.equals("cancelada")
                             || statusNormalizado.equals("cancelado")
                             || statusNormalizado.equals("cancelled")) {
@@ -649,12 +627,10 @@ public class ProjetoService {
                     }
                 }
 
-                // Contabilizar tarefas atrasadas
                 if (ta.getDaysDelayed() > 0) {
                     tDelayed++;
                 }
 
-                // Contabilizar tarefas bloqueadas
                 if (ta.getBlockedBy() != null
                         && !ta.getBlockedBy().isBlank()) {
                     tBlocked++;
@@ -732,7 +708,6 @@ public class ProjetoService {
             f.setMilestones(milestones);
             f.setRisks(risks);
 
-            // Relacionamento com cliente e organização
             f.setClienteId(p.getClienteId());
             f.setOrganizacaoId(p.getOrganizacaoId());
 

@@ -51,6 +51,16 @@ public class Usuario {
     @Column(name = "reset_token_expiry")
     private LocalDateTime resetTokenExpiry;
 
+    // Dados específicos do convite de primeiro acesso.
+    @Column(name = "convite_token", length = 64)
+    private String conviteTokenHash;
+
+    @Column(name = "convite_token_expiry")
+    private LocalDateTime conviteTokenExpiry;
+
+    @Column(name = "primeiro_acesso_validado", nullable = false)
+    private Boolean primeiroAcessoValidado = Boolean.FALSE;
+
     @Column(name = "is_ativo")
     private Boolean isAtivo = Boolean.TRUE;
 
@@ -176,6 +186,30 @@ public class Usuario {
 
     public void setResetTokenExpiry(LocalDateTime resetTokenExpiry) {
         this.resetTokenExpiry = resetTokenExpiry;
+    }
+
+    public String getConviteTokenHash() {
+        return conviteTokenHash;
+    }
+
+    public void setConviteTokenHash(String conviteTokenHash) {
+        this.conviteTokenHash = conviteTokenHash;
+    }
+
+    public LocalDateTime getConviteTokenExpiry() {
+        return conviteTokenExpiry;
+    }
+
+    public void setConviteTokenExpiry(LocalDateTime conviteTokenExpiry) {
+        this.conviteTokenExpiry = conviteTokenExpiry;
+    }
+
+    public Boolean getPrimeiroAcessoValidado() {
+        return primeiroAcessoValidado;
+    }
+
+    public void setPrimeiroAcessoValidado(Boolean primeiroAcessoValidado) {
+        this.primeiroAcessoValidado = primeiroAcessoValidado;
     }
 
     public Boolean getIsAtivo() {

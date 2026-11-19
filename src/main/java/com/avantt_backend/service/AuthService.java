@@ -2,14 +2,19 @@
 package com.avantt_backend.service;
 
 import com.avantt_backend.dto.AuthRequestDTO;
+import com.avantt_backend.dto.LoginResponseDTO;
 import com.avantt_backend.dto.AuthResponseDTO;
 import com.avantt_backend.dto.RegisterRequestDTO;
 import com.avantt_backend.dto.PasswordResetRequestDTO;
 import com.avantt_backend.dto.PasswordResetConfirmDTO;
 import com.avantt_backend.dto.UsuarioResponseDTO;
+
 import com.avantt_backend.entity.Usuario;
 import com.avantt_backend.entity.Perfil;
+
 import com.avantt_backend.repository.UsuarioRepository;
+import com.avantt_backend.repository.PerfilRepository;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,13 +31,16 @@ import org.slf4j.LoggerFactory;
 public class AuthService {
 
     private final UsuarioRepository usuarioRepository;
-    private final com.avantt_backend.repository.PerfilRepository perfilRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PerfilRepository perfilRepository;
+
+    private final BCryptPasswordEncoder passwordEncoder =
+            new BCryptPasswordEncoder();
+
     private final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     public AuthService(
             UsuarioRepository usuarioRepository,
-            com.avantt_backend.repository.PerfilRepository perfilRepository) {
+            PerfilRepository perfilRepository) {
 
         this.usuarioRepository = usuarioRepository;
         this.perfilRepository = perfilRepository;
@@ -58,6 +66,7 @@ public class AuthService {
                 req.getName(), email, req.getRole());
 
         Usuario u = new Usuario();
+
         u.setNome(req.getName());
         u.setEmail(email);
         u.setCargo(req.getRole());
@@ -66,6 +75,10 @@ public class AuthService {
 
         Integer defaultPerfilId = getOrCreatePerfilId("Colaborador");
         u.setPerfilId(defaultPerfilId);
+
+        // O colaborador deverá validar o primeiro acesso após ser vinculado
+        // a um projeto por um gestor.
+        u.setPrimeiroAcessoValidado(false);
 
         Usuario saved = usuarioRepository.save(u);
 
@@ -82,6 +95,7 @@ public class AuthService {
 
     /**
      * Registra um usuário vinculado a uma organização.
+     * Esse fluxo é utilizado para o cadastro do administrador da organização.
      */
     @Transactional
     public UsuarioResponseDTO register(
@@ -115,6 +129,7 @@ public class AuthService {
                 organizacaoId);
 
         Usuario u = new Usuario();
+
         u.setNome(req.getName());
         u.setEmail(email);
         u.setCargo(req.getRole());
@@ -123,6 +138,9 @@ public class AuthService {
 
         Integer adminPerfilId = getOrCreatePerfilId("Administrador");
         u.setPerfilId(adminPerfilId);
+
+        // O administrador conclui o cadastro da organização normalmente.
+        u.setPrimeiroAcessoValidado(true);
 
         Usuario saved = usuarioRepository.save(u);
 
@@ -158,6 +176,7 @@ public class AuthService {
 
         } catch (Exception ex) {
             log.error("Erro ao localizar ou criar perfil: {}", nome, ex);
+
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "Não foi possível localizar ou criar o perfil " + nome);
@@ -189,15 +208,32 @@ public class AuthService {
                     "Token expirado. Faça login novamente.");
         }
 
+        // Impede o uso de tokens antigos enquanto o primeiro acesso estiver pendente.
+        if (!Boolean.TRUE.equals(usuario.getPrimeiroAcessoValidado())) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Valide seu primeiro acesso antes de continuar.");
+        }
+
         return usuario;
     }
 
+    /**
+     * Valida e-mail e senha.
+     *
+     * Se o primeiro acesso estiver pendente, não cria token de sessão.
+     * Nesse caso, retorna requiresFirstAccessValidation = true.
+     */
     @Transactional
-    public AuthResponseDTO login(AuthRequestDTO req) {
+    public LoginResponseDTO login(AuthRequestDTO req) {
 
         String email = req.getEmail() == null
                 ? null
                 : req.getEmail().trim().toLowerCase();
+
+        if (email == null || email.isBlank() || req.getPassword() == null) {
+            return null;
+        }
 
         var opt = usuarioRepository.findByEmail(email);
 
@@ -207,12 +243,20 @@ public class AuthService {
 
         Usuario u = opt.get();
 
-        if (u.getSenha() == null) {
+        if (u.getSenha() == null
+                || !passwordEncoder.matches(req.getPassword(), u.getSenha())) {
             return null;
         }
 
-        if (!passwordEncoder.matches(req.getPassword(), u.getSenha())) {
-            return null;
+        if (!Boolean.TRUE.equals(u.getPrimeiroAcessoValidado())) {
+
+            // Garante que uma sessão antiga não continue válida.
+            u.setAuthToken(null);
+            u.setAuthTokenExpiry(null);
+
+            usuarioRepository.save(u);
+
+            return LoginResponseDTO.primeiroAcessoPendente(u.getEmail());
         }
 
         String token = UUID.randomUUID().toString();
@@ -224,7 +268,7 @@ public class AuthService {
 
         UsuarioResponseDTO ur = toResponseDTO(u);
 
-        return new AuthResponseDTO(token, ur);
+        return LoginResponseDTO.loginConcluido(token, ur);
     }
 
     @Transactional
@@ -268,7 +312,6 @@ public class AuthService {
 
         usuarioRepository.save(u);
 
-        // Em produção, o token deve ser enviado por e-mail.
         // Retorno mantido para testes e desenvolvimento.
         return token;
     }
@@ -313,7 +356,6 @@ public class AuthService {
         dto.setAvatar(generateInitials(usuario.getNome()));
         dto.setColor("#2563eb");
 
-        // Retorna a organização vinculada ao usuário.
         dto.setOrganizacaoId(usuario.getOrganizacaoId());
 
         return dto;

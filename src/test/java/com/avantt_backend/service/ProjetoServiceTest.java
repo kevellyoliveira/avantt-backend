@@ -1,3 +1,4 @@
+
 package com.avantt_backend.service;
 
 import com.avantt_backend.dto.ProjetoMarcoDTO;
@@ -10,6 +11,7 @@ import com.avantt_backend.entity.ProjetoMarco;
 import com.avantt_backend.entity.ProjetoUsuario;
 import com.avantt_backend.entity.ProjetoUsuarioId;
 import com.avantt_backend.entity.Usuario;
+import com.avantt_backend.exception.ApiException;
 import com.avantt_backend.repository.ClienteRepository;
 import com.avantt_backend.repository.OrganizacaoRepository;
 import com.avantt_backend.repository.ProjetoMarcoRepository;
@@ -18,14 +20,12 @@ import com.avantt_backend.repository.ProjetoRiscoRepository;
 import com.avantt_backend.repository.ProjetoUsuarioRepository;
 import com.avantt_backend.repository.TarefaRepository;
 import com.avantt_backend.repository.UsuarioRepository;
-import com.avantt_backend.exception.ApiException;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -67,6 +67,10 @@ class ProjetoServiceTest {
 
     @Mock
     private ProjetoRiscoRepository projetoRiscoRepository;
+
+    // Mock necessário para a integração de convites no ProjetoService.
+    @Mock
+    private ConviteService conviteService;
 
     @InjectMocks
     private ProjetoService projetoService;
@@ -160,6 +164,10 @@ class ProjetoServiceTest {
         verify(projetoUsuarioRepository, times(2))
                 .save(any(ProjetoUsuario.class));
 
+        // Confirma que o serviço de convite foi chamado para os dois usuários.
+        verify(conviteService, times(2))
+                .convidarSeNecessario(any(Integer.class));
+
         verify(projetoMarcoRepository)
                 .deleteByProjeto_Id(100);
 
@@ -199,6 +207,9 @@ class ProjetoServiceTest {
         );
 
         assertTrue(exception.getMessage().contains("Usuário não encontrado"));
+
+        verify(conviteService, never())
+                .convidarSeNecessario(any(Integer.class));
     }
 
     @Test
