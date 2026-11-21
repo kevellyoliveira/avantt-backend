@@ -2,7 +2,9 @@
 -- BANCO DE DADOS - SISTEMA DE GERENCIAMENTO DE PROJETOS E TAREFAS
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS sistema_gestao
+DROP DATABASE IF EXISTS sistema_gestao;
+
+CREATE DATABASE sistema_gestao
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
@@ -262,7 +264,9 @@ INSERT INTO status_tarefa (id, nome, descricao) VALUES
 (1, 'Planejada', 'Tarefa planejada, mas ainda não iniciada'),
 (2, 'Em andamento', 'Tarefa atualmente em execução'),
 (3, 'Concluída', 'Tarefa finalizada'),
-(4, 'Bloqueada', 'Tarefa impedida de continuar');
+(4, 'Bloqueada', 'Tarefa impedida de continuar'),
+(5, 'Revisão', 'Tarefa aguardando revisão'),
+(6, 'Cancelada', 'Tarefa cancelada');
 
 
 -- ============================================================
@@ -300,10 +304,13 @@ CREATE TABLE tarefa (
 
     titulo VARCHAR(200) NOT NULL,
     descricao TEXT,
+    criado_por INT NULL,
+    atribuido_para INT NULL,
 
     story_points INT NULL,
 
     horas_estimadas DECIMAL(10,2) DEFAULT 0.00,
+    horas_realizadas DECIMAL(10,2) DEFAULT 0.00,
 
     is_subtarefa BOOLEAN DEFAULT FALSE,
 
@@ -336,6 +343,13 @@ CREATE TABLE tarefa (
         FOREIGN KEY (tarefa_pai_id)
         REFERENCES tarefa(id)
         ON DELETE SET NULL
+    ,
+    CONSTRAINT fk_tarefa_criado_por
+        FOREIGN KEY (criado_por)
+        REFERENCES usuario(id),
+    CONSTRAINT fk_tarefa_atribuido_para
+        FOREIGN KEY (atribuido_para)
+        REFERENCES usuario(id)
 );
 
 
@@ -1356,12 +1370,6 @@ SELECT DATABASE();
 DESCRIBE usuario;
 SHOW COLUMNS FROM tarefa;
 
-ALTER TABLE tarefa
-ADD COLUMN atribuido_para INT NULL;
-
-CREATE INDEX idx_tarefa_atribuido_para
-ON tarefa (atribuido_para);
-
 DESCRIBE tarefa;
 
 SELECT
@@ -1467,177 +1475,34 @@ FROM usuario u
 LEFT JOIN organizacao o
     ON o.id = u.organizacao_id
 WHERE u.id = 10;
-                                                                                                                                                                             
-CREATE INDEX idx_tarefa_status ON tarefa(status_id);                                                                                                                         
-CREATE INDEX idx_tarefa_projeto ON tarefa(projeto_id);                                                                                                                       
-CREATE INDEX idx_tarefa_sprint ON tarefa(sprint_id);                                                                                                                        
-CREATE INDEX idx_tarefa_datafim ON tarefa(data_fim);                                                                                                                         
-CREATE INDEX idx_tarefa_usuario_usuario ON tarefa_usuario(usuario_id);          
-                     
-                     
-SELECT COUNT(*)
-FROM tarefa t
-INNER JOIN tarefa_usuario tu
-    ON tu.tarefa_id = t.id
-WHERE t.projeto_id = ?
-  AND tu.usuario_id = ?;
-  
-  SELECT
-    id,
-    titulo,
-    projeto_id,
-    sprint_id,
-    atribuido_para
-FROM tarefa
-ORDER BY id DESC;
-SELECT
-    ID,
-    TITULO,
-    ATRIBUIDO_PARA
-FROM TAREFA
-WHERE ATRIBUIDO_PARA = 16;
-
-SELECT
-    ATRIBUIDO_PARA,
-    COUNT(*) AS QUANTIDADE_TAREFAS
-FROM TAREFA
-WHERE ATRIBUIDO_PARA IS NOT NULL
-GROUP BY ATRIBUIDO_PARA
-ORDER BY ATRIBUIDO_PARA;
-
--- ============================================================
--- COMPATIBILIDADE COM BASES CRIADAS ANTES DESTE SCRIPT
--- ============================================================
-
-DROP PROCEDURE IF EXISTS ajustar_schema_compatibilidade;
-DELIMITER $$
-CREATE PROCEDURE ajustar_schema_compatibilidade()
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'organizacao' AND COLUMN_NAME = 'is_ativo'
-    ) THEN
-        ALTER TABLE organizacao ADD COLUMN is_ativo BOOLEAN DEFAULT TRUE;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'organizacao' AND COLUMN_NAME = 'data_desativacao'
-    ) THEN
-        ALTER TABLE organizacao ADD COLUMN data_desativacao DATETIME NULL;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cliente' AND COLUMN_NAME = 'is_ativo'
-    ) THEN
-        ALTER TABLE cliente ADD COLUMN is_ativo BOOLEAN DEFAULT TRUE;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cliente' AND COLUMN_NAME = 'data_desativacao'
-    ) THEN
-        ALTER TABLE cliente ADD COLUMN data_desativacao DATETIME NULL;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'projeto' AND COLUMN_NAME = 'cor'
-    ) THEN
-        ALTER TABLE projeto ADD COLUMN cor VARCHAR(20) NULL;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'projeto' AND COLUMN_NAME = 'progresso'
-    ) THEN
-        ALTER TABLE projeto ADD COLUMN progresso INT NOT NULL DEFAULT 0;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sprint' AND COLUMN_NAME = 'progresso'
-    ) THEN
-        ALTER TABLE sprint ADD COLUMN progresso INT NOT NULL DEFAULT 0;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuario' AND COLUMN_NAME = 'convite_token'
-    ) THEN
-        ALTER TABLE usuario ADD COLUMN convite_token VARCHAR(64) NULL;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuario' AND COLUMN_NAME = 'convite_token_expiry'
-    ) THEN
-        ALTER TABLE usuario ADD COLUMN convite_token_expiry DATETIME NULL;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuario' AND COLUMN_NAME = 'primeiro_acesso_validado'
-    ) THEN
-        ALTER TABLE usuario ADD COLUMN primeiro_acesso_validado BOOLEAN NOT NULL DEFAULT FALSE;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.STATISTICS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuario' AND INDEX_NAME = 'idx_usuario_convite_token'
-    ) THEN
-        CREATE INDEX idx_usuario_convite_token ON usuario(convite_token);
-    END IF;
-END$$
-DELIMITER ;
-
-CALL ajustar_schema_compatibilidade();
-DROP PROCEDURE ajustar_schema_compatibilidade;
-
-UPDATE usuario
-SET primeiro_acesso_validado = TRUE
-WHERE id > 0
-  AND senha IS NOT NULL
-  AND TRIM(senha) <> '';
-
-SELECT
-    ID,
-    NOME,
-    EMAIL
-FROM USUARIO
-WHERE ID = 16;
-
-SELECT *
-FROM USUARIO
-WHERE ID = 16;
-
-
-SELECT
-    PU.PROJETO_ID,
-    PU.USUARIO_ID,
-    P.NOME,
-    P.ORGANIZACAO_ID
-FROM PROJETO_USUARIO PU
-INNER JOIN PROJETO P
-    ON P.ID = PU.PROJETO_ID
-WHERE PU.PROJETO_ID = 9
-  AND PU.USUARIO_ID = 16;
-
-SELECT
-    ID,
-    NOME,
-    ORGANIZACAO_ID
-FROM PROJETO
-ORDER BY ID;
-  
-  
-  select * from usuario;
-  
-DELETE FROM usuario
-WHERE ID = 17;
-
-
 -- ============================================================
 -- FIM DO SCRIPT
 -- ============================================================
+
+UPDATE sprint s
+SET s.progresso = (
+    SELECT COALESCE(
+        ROUND(
+            SUM(CASE WHEN st.nome = 'Concluída' THEN 1 ELSE 0 END) * 100.0 /
+            NULLIF(SUM(CASE WHEN st.nome <> 'Cancelada' THEN 1 ELSE 0 END), 0)
+        ),
+        0
+    )
+    FROM tarefa t
+    JOIN status_tarefa st ON st.id = t.status_id
+    WHERE t.sprint_id = s.id
+);
+
+UPDATE projeto p
+SET p.progresso = (
+    SELECT COALESCE(
+        ROUND(
+            SUM(CASE WHEN st.nome = 'Concluída' THEN 1 ELSE 0 END) * 100.0 /
+            NULLIF(SUM(CASE WHEN st.nome <> 'Cancelada' THEN 1 ELSE 0 END), 0)
+        ),
+        0
+    )
+    FROM tarefa t
+    JOIN status_tarefa st ON st.id = t.status_id
+    WHERE t.projeto_id = p.id
+);

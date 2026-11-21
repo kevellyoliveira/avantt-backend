@@ -115,7 +115,7 @@ class TarefaServiceTest {
     }
 
     @Test
-    void updateStatus_rejectsRemovedLifecycleStatuses() {
+    void updateStatus_acceptsCanceladaStatus() {
         Tarefa tarefa = new Tarefa();
         tarefa.setId(12);
         Status status = new Status();
@@ -124,14 +124,13 @@ class TarefaServiceTest {
 
         when(tarefaRepository.findById(12)).thenReturn(Optional.of(tarefa));
         when(statusTarefaRepository.findById(6)).thenReturn(Optional.of(status));
+        when(tarefaRepository.save(tarefa)).thenReturn(tarefa);
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> tarefaService.updateStatus(12, 6)
-        );
+        TarefaRepository repo = tarefaRepository;
+        var response = tarefaService.updateStatus(12, 6);
 
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        verify(tarefaRepository, never()).save(any(Tarefa.class));
+        assertEquals("cancelada", tarefa.getStatus());
+        verify(repo).save(tarefa);
     }
 
     @Test

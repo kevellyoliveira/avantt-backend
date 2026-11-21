@@ -41,6 +41,9 @@ public class Tarefa {
     @Column(name = "horas_estimadas")
     private Integer estimatedHours;
 
+    @Column(name = "horas_realizadas")
+    private Integer hoursSpent;
+
     @Column(name = "is_subtarefa")
     private Boolean isSubtarefa;
 
@@ -229,6 +232,14 @@ public class Tarefa {
 
     public void setEstimatedHours(Integer estimatedHours) {
         this.estimatedHours = estimatedHours;
+    }
+
+    public Integer getHoursSpent() {
+        return hoursSpent;
+    }
+
+    public void setHoursSpent(Integer hoursSpent) {
+        this.hoursSpent = hoursSpent;
     }
 
     public String getBlockedBy() {

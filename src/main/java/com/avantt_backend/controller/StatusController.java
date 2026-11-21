@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import jakarta.annotation.PostConstruct;
 
 import static com.avantt_backend.util.ApiPaths.STATUS;
 
@@ -25,6 +26,25 @@ public class StatusController {
 
     public StatusController(StatusTarefaRepository repo) {
         this.repo = repo;
+    }
+
+    @PostConstruct
+    public void ensureTaskStatuses() {
+        ensureStatus("Planejada", "Tarefa planejada, mas ainda não iniciada");
+        ensureStatus("Em andamento", "Tarefa atualmente em execução");
+        ensureStatus("Concluída", "Tarefa finalizada");
+        ensureStatus("Bloqueada", "Tarefa impedida de continuar");
+        ensureStatus("Revisão", "Tarefa aguardando revisão");
+        ensureStatus("Cancelada", "Tarefa cancelada");
+    }
+
+    private void ensureStatus(String nome, String descricao) {
+        if (repo.findByNomeIgnoreCase(nome).isEmpty()) {
+            Status status = new Status();
+            status.setNome(nome);
+            status.setDescricao(descricao);
+            repo.save(status);
+        }
     }
 
     @Operation(summary = "Listar status", description = "Retorna todos os status válidos para projeto/sprint/tarefa.")

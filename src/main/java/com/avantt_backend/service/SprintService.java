@@ -92,6 +92,21 @@ public class SprintService {
         }
     }
 
+    private double getSprintElapsedPercent(Integer sprintId) {
+        if (sprintId == null) return 0;
+        return sprintRepository.findById(sprintId)
+                .map(sprint -> {
+                    if (sprint.getDataInicio() == null || sprint.getDataFim() == null) return 0.0;
+                    long duration = ChronoUnit.DAYS.between(sprint.getDataInicio(), sprint.getDataFim());
+                    if (duration <= 0) return 100.0;
+                    long elapsed = ChronoUnit.DAYS.between(sprint.getDataInicio(), LocalDate.now());
+                    elapsed = Math.max(0, elapsed);
+                    elapsed = Math.min(duration, elapsed);
+                    return elapsed * 100.0 / duration;
+                })
+                .orElse(0.0);
+    }
+
     /**
      * Calcula o progresso da sprint.
      *
@@ -138,86 +153,55 @@ public class SprintService {
             return new ProgressInfo(total, done, progress);
         }
 
+        int total = 0;
+        int started = 0;
+        int done = 0;
+        double effortProgress = 0;
+        double totalEstimated = 0;
+
         java.util.Set<Integer> statusIds = new java.util.HashSet<>();
-
-        for (Tarefa tarefa : tasks) {
-            if (tarefa.getStatusId() != null) {
-                statusIds.add(tarefa.getStatusId());
-            }
-        }
-
-        java.util.Map<Integer, String> statusNamesById = new java.util.HashMap<>();
-
+        tasks.forEach(task -> {
+            if (task.getStatusId() != null) statusIds.add(task.getStatusId());
+        });
+        java.util.Map<Integer, String> statusNames = new java.util.HashMap<>();
         if (!statusIds.isEmpty()) {
             statusTarefaRepository.findAllById(statusIds)
-                    .forEach(status ->
-                            statusNamesById.put(status.getId(), status.getNome())
-                    );
+                    .forEach(status -> statusNames.put(status.getId(), status.getNome()));
         }
-
-        java.util.Map<Integer, Boolean> statusIsDoneById = new java.util.HashMap<>();
-        java.util.Map<Integer, Boolean> statusIsCancelledById = new java.util.HashMap<>();
-
-        for (var entry : statusNamesById.entrySet()) {
-
-            Integer id = entry.getKey();
-            String name = entry.getValue();
-
-            statusIsDoneById.put(id, StatusUtils.isDone(name));
-            statusIsCancelledById.put(id, StatusUtils.isCancelled(name));
-        }
-
-        int total = 0;
-        int done = 0;
 
         for (Tarefa tarefa : tasks) {
-
             String statusName = tarefa.getStatus();
-            Integer statusId = tarefa.getStatusId();
-
-            if ((statusName == null || statusName.isBlank())
-                    && statusId != null) {
-                statusName = statusNamesById.get(statusId);
+            if (tarefa.getStatusId() != null) {
+                statusName = statusNames.get(tarefa.getStatusId());
             }
-
-            boolean cancelled;
-            boolean isDone;
-
-            if (statusId != null && statusNamesById.containsKey(statusId)) {
-
-                cancelled = statusIsCancelledById.getOrDefault(statusId, false);
-                isDone = statusIsDoneById.getOrDefault(statusId, false);
-
-            } else {
-
-                cancelled = StatusUtils.isCancelled(statusName);
-                isDone = StatusUtils.isDone(statusName);
-            }
-
-            log.debug(
-                    "task id={} status='{}' statusId={} resolvedStatus='{}' cancelled={} done={}",
-                    tarefa.getId(),
-                    tarefa.getStatus(),
-                    statusId,
-                    statusName,
-                    cancelled,
-                    isDone
-            );
-
-            if (cancelled) {
-                continue;
-            }
+            if (StatusUtils.isCancelled(statusName)) continue;
 
             total++;
+            if (StatusUtils.isDone(statusName)) done++;
+            if (tarefa.getDataInicio() != null
+                    || (tarefa.getHoursSpent() != null && tarefa.getHoursSpent() > 0)) {
+                started++;
+            }
 
-            if (isDone) {
-                done++;
+            int estimated = tarefa.getEstimatedHours() == null ? 0 : tarefa.getEstimatedHours();
+            int spent = tarefa.getHoursSpent() == null ? 0 : tarefa.getHoursSpent();
+            if (estimated > 0) {
+                totalEstimated += estimated;
+                effortProgress += Math.min(100, spent * 100.0 / estimated) * estimated;
             }
         }
+
+        double effortFactor = totalEstimated == 0
+                ? 0
+                : effortProgress / totalEstimated;
+        double quantityFactor = total == 0
+                ? 0
+                : started * 100.0 / total;
+        double timeFactor = getSprintElapsedPercent(sprintId);
 
         int progress = total == 0
                 ? 0
-                : (int) Math.round((done * 100.0) / total);
+                : (int) Math.round(effortFactor * 0.70 + quantityFactor * 0.20 + timeFactor * 0.10);
 
         log.info(
                 "computeProgressInfo: sprintId={} total={} done={} progress={}",
@@ -326,82 +310,70 @@ public class SprintService {
             return new ProjectProgressInfo(0, 0, 0);
         }
 
-        // Busca os IDs dos status utilizados pelas tarefas.
         java.util.Set<Integer> statusIds = new java.util.HashSet<>();
-
-        for (Tarefa tarefa : tarefas) {
-            if (tarefa.getStatusId() != null) {
-                statusIds.add(tarefa.getStatusId());
-            }
-        }
-
-        // Resolve os nomes dos status.
+        tarefas.forEach(task -> {
+            if (task.getStatusId() != null) statusIds.add(task.getStatusId());
+        });
         java.util.Map<Integer, String> statusNamesById = new java.util.HashMap<>();
-
         if (!statusIds.isEmpty()) {
             statusTarefaRepository.findAllById(statusIds)
-                    .forEach(status ->
-                            statusNamesById.put(status.getId(), status.getNome())
-                    );
+                    .forEach(status -> statusNamesById.put(status.getId(), status.getNome()));
         }
 
         int total = 0;
         int done = 0;
+        int started = 0;
+        double effortProgress = 0;
+        double totalEstimated = 0;
 
         for (Tarefa tarefa : tarefas) {
-
             String statusName = tarefa.getStatus();
-            Integer statusId = tarefa.getStatusId();
-
-            // Quando o status auxiliar não estiver preenchido,
-            // utiliza o nome obtido pelo statusId.
-            if ((statusName == null || statusName.isBlank())
-                    && statusId != null) {
-                statusName = statusNamesById.get(statusId);
+            if (tarefa.getStatusId() != null) {
+                statusName = statusNamesById.get(tarefa.getStatusId());
             }
-
-            boolean cancelled;
-            boolean isDone;
-
-            if (statusId != null && statusNamesById.containsKey(statusId)) {
-
-                String resolvedStatus = statusNamesById.get(statusId);
-
-                cancelled = StatusUtils.isCancelled(resolvedStatus);
-                isDone = StatusUtils.isDone(resolvedStatus);
-
-            } else {
-
-                cancelled = StatusUtils.isCancelled(statusName);
-                isDone = StatusUtils.isDone(statusName);
-            }
-
-            log.debug(
-                    "Project progress: projetoId={} tarefaId={} sprintId={} statusId={} status={} cancelled={} done={}",
-                    projetoId,
-                    tarefa.getId(),
-                    tarefa.getSprintId(),
-                    statusId,
-                    statusName,
-                    cancelled,
-                    isDone
-            );
-
-            // Tarefas canceladas não entram no cálculo.
-            if (cancelled) {
-                continue;
-            }
+            if (StatusUtils.isCancelled(statusName)) continue;
 
             total++;
-
-            if (isDone) {
-                done++;
+            if (StatusUtils.isDone(statusName)) done++;
+            if (tarefa.getDataInicio() != null
+                    || (tarefa.getHoursSpent() != null && tarefa.getHoursSpent() > 0)) {
+                started++;
             }
+
+            int estimated = tarefa.getEstimatedHours() == null ? 0 : tarefa.getEstimatedHours();
+            int spent = tarefa.getHoursSpent() == null ? 0 : tarefa.getHoursSpent();
+            if (estimated > 0) {
+                totalEstimated += estimated;
+                effortProgress += Math.min(100, spent * 100.0 / estimated) * estimated;
+            }
+        }
+
+        double taskEffort = totalEstimated == 0 ? 0 : effortProgress / totalEstimated;
+        double taskQuantity = total == 0 ? 0 : started * 100.0 / total;
+
+        var sprints = sprintRepository.findByProjetoId(projetoId);
+        double sprintQuantity = 0;
+        if (sprints != null && !sprints.isEmpty()) {
+            double sprintSum = 0;
+            for (Sprint sprint : sprints) {
+                sprintSum += sprint.getProgresso() == null ? 0 : sprint.getProgresso();
+            }
+            sprintQuantity = sprintSum / sprints.size();
+        }
+
+        var projetoTempo = projetoOptional.get();
+        double projectTime = 0;
+        if (projetoTempo.getStartDate() != null && projetoTempo.getEndDate() != null) {
+            long duration = ChronoUnit.DAYS.between(projetoTempo.getStartDate(), projetoTempo.getEndDate());
+            long elapsed = duration <= 0 ? 100 : ChronoUnit.DAYS.between(projetoTempo.getStartDate(), LocalDate.now());
+            elapsed = Math.max(0, elapsed);
+            elapsed = duration <= 0 ? 100 : Math.min(duration, elapsed);
+            projectTime = duration <= 0 ? 100 : elapsed * 100.0 / duration;
         }
 
         int progress = total == 0
                 ? 0
-                : (int) Math.round((done * 100.0) / total);
+                : (int) Math.round(taskEffort * 0.60 + taskQuantity * 0.20 + sprintQuantity * 0.10 + projectTime * 0.10);
 
         var projeto = projetoOptional.get();
 
@@ -432,7 +404,9 @@ public class SprintService {
         }
 
         Sprint sprint = sprintOptional.get();
-        String sprintStatus = validatedSprintStatus(dto.getStatusId());
+        String sprintStatus = dto.getStatusId() == null
+                ? sprint.getStatus()
+                : validatedSprintStatus(dto.getStatusId());
 
         if (dto.getProjectId() != null
                 && !dto.getProjectId().equals(sprint.getProjetoId())) {
@@ -735,11 +709,7 @@ public class SprintService {
                         : dto.getDaysDelayed()
         );
 
-        response.setProgress(
-                dto.getProgress() == null
-                        ? info.progress
-                        : dto.getProgress()
-        );
+        response.setProgress(info.progress);
 
         response.setTotalTasks(
                 dto.getTotalTasks() == null

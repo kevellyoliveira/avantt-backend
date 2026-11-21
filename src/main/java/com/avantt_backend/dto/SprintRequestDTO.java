@@ -1,7 +1,6 @@
 package com.avantt_backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -10,15 +9,12 @@ public class SprintRequestDTO {
     private String name;
     private Integer projectId;
 
-    @NotNull(message = "statusId é obrigatório")
     private Integer statusId;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    @NotNull(message = "Data de início é obrigatória")
     private LocalDate startDate;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    @NotNull(message = "Data de fim é obrigatória")
     private LocalDate endDate;
 
     private String goal;

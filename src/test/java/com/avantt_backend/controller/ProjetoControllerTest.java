@@ -274,7 +274,7 @@ class ProjetoControllerTest {
     // ==========================================
 
     @Test
-    void getList_empty_shouldReturn404() throws Exception {
+    void getList_empty_shouldReturn200WithEmptyArray() throws Exception {
 
         configurarAutenticacao();
 
@@ -286,8 +286,8 @@ class ProjetoControllerTest {
         mockMvc.perform(get("/api/projetos")
                         .header("Authorization", AUTHORIZATION)
                         .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
 
         verify(authService).obterUsuarioAutenticado(TOKEN);
 

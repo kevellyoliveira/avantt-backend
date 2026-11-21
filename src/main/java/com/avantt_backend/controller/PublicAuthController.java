@@ -40,14 +40,41 @@ public class PublicAuthController {
 
     @PostMapping("/auth/register-organizacao")
     public ResponseEntity<?> registerOrganizacao(@Valid @RequestBody RegisterOrganizacaoRequestDTO req) {
-        // Normalize nested or flattened payloads
+        var userReq = req.getUsuario();
+
+        if (userReq == null) {
+            userReq = new RegisterRequestDTO();
+            userReq.setName(req.getName());
+            userReq.setEmail(req.getEmail());
+            userReq.setPassword(req.getPassword());
+            userReq.setRole(req.getRole());
+        }
+
         var orgReq = req.getOrganizacao();
         if (orgReq == null) {
             orgReq = new com.avantt_backend.dto.OrganizacaoRequestDTO();
             orgReq.setNomeFantasia(req.getOrganizationName());
             orgReq.setCnpj(req.getCnpj());
             orgReq.setEmailContato(req.getEmailContato());
+            orgReq.setTelefone(req.getTelefone());
+            orgReq.setContato(req.getContato());
             orgReq.setIsAtivo(req.getIsAtivo());
+        }
+
+        if (orgReq.getEmailContato() == null || orgReq.getEmailContato().isBlank()) {
+            orgReq.setEmailContato(
+                    req.getEmailContato() == null || req.getEmailContato().isBlank()
+                            ? userReq.getEmail()
+                            : req.getEmailContato());
+        }
+        if (orgReq.getTelefone() == null || orgReq.getTelefone().isBlank()) {
+            orgReq.setTelefone(req.getTelefone());
+        }
+        if (orgReq.getContato() == null || orgReq.getContato().isBlank()) {
+            orgReq.setContato(
+                    req.getContato() == null || req.getContato().isBlank()
+                            ? userReq.getName()
+                            : req.getContato());
         }
 
         var createdOrg = organizacaoService.create(orgReq);
@@ -56,15 +83,6 @@ public class PublicAuthController {
             orgId = createdOrg.getId() == null ? null : Integer.valueOf(createdOrg.getId());
         } catch (NumberFormatException ex) {
             throw new com.avantt_backend.exception.ApiException("Erro ao criar organização");
-        }
-
-        var userReq = req.getUsuario();
-        if (userReq == null) {
-            userReq = new com.avantt_backend.dto.RegisterRequestDTO();
-            userReq.setName(req.getName());
-            userReq.setEmail(req.getEmail());
-            userReq.setPassword(req.getPassword());
-            userReq.setRole(req.getRole());
         }
 
         var createdUser = authService.register(userReq, orgId);

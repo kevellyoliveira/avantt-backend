@@ -36,6 +36,9 @@ public class TarefaRequestDTO {
     private LocalDate plannedEnd;
 
     private Integer estimatedHours;
+    private Integer hoursSpent;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate startDate;
     private String blockedBy;
     private List<Integer> tagIds;
     @Size(max = 1000, message = "Descrição deve ter no máximo 1000 caracteres")
@@ -78,6 +81,12 @@ public class TarefaRequestDTO {
 
     public Integer getEstimatedHours() { return estimatedHours; }
     public void setEstimatedHours(Integer estimatedHours) { this.estimatedHours = estimatedHours; }
+
+    public Integer getHoursSpent() { return hoursSpent; }
+    public void setHoursSpent(Integer hoursSpent) { this.hoursSpent = hoursSpent; }
+
+    public LocalDate getStartDate() { return startDate; }
+    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
 
     public String getBlockedBy() { return blockedBy; }
     public void setBlockedBy(String blockedBy) { this.blockedBy = blockedBy; }

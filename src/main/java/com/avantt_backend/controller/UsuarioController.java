@@ -116,7 +116,7 @@ public class UsuarioController {
         }
 
         Usuario usuarioAutenticado =
-                authService.obterUsuarioAutenticado(token);
+                authService.obterGestorAutenticado(token);
 
         Integer organizacaoId =
                 usuarioAutenticado.getOrganizacaoId();
@@ -167,8 +167,12 @@ public class UsuarioController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping(path = USUARIOS + "/disponiveis")
-    public ResponseEntity<?> listUsuariosDisponiveis() {
-        List<UsuarioResponseDTO> list = usuarioService.listAvailable();
+    public ResponseEntity<?> listUsuariosDisponiveis(
+            @RequestParam("email") String email,
+            HttpServletRequest request) {
+
+        getOrganizacaoIdObrigatoria(request);
+        List<UsuarioResponseDTO> list = usuarioService.listAvailable(email);
         return ResponseEntity.ok(list);
     }
 
@@ -200,6 +204,37 @@ public class UsuarioController {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private Integer getOrganizacaoIdObrigatoria(HttpServletRequest request) {
+        String authorization = request == null
+                ? null
+                : request.getHeader("Authorization");
+
+        if (authorization == null || authorization.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Token de autenticação não informado.");
+        }
+
+        String token = authorization.trim();
+        if (token.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            token = token.substring(7).trim();
+        }
+        if (token.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Token de autenticação inválido.");
+        }
+
+        Usuario autenticado = authService.obterGestorAutenticado(token);
+        if (autenticado.getOrganizacaoId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "O usuário autenticado não possui organização vinculada.");
+        }
+
+        return autenticado.getOrganizacaoId();
     }
 
     public ResponseEntity<?> listUsuarios(Integer projetoId) {

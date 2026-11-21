@@ -185,12 +185,33 @@ public class TarefaController {
         content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.TarefaResponseDTO.class), examples = {
             @ExampleObject(name = "Tarefa status updated example", value = "{\"id\":\"14\",\"title\":\"Corrigir bug do login\",\"project\":\"Portal Corporativo\",\"sprint\":\"Sprint 03 - Melhorias\",\"assignee\":\"Bruno Henrique Lima\",\"priority\":\"alta\",\"status\":\"concluída\",\"statusId\":3,\"sprintProgress\":67}")
         }))
-    public ResponseEntity<?> patchStatus(@PathVariable Integer id, @RequestBody(description = "Corpo: { \"statusId\": <id> } - campo statusId é obrigatório", required = true,
+    public ResponseEntity<?> patchStatus(@PathVariable Integer id, @RequestBody(description = "Corpo: { \"statusId\": <id>, \"blockedBy\": <motivo opcional> } - campo statusId é obrigatório", required = true,
             content = @Content(mediaType = "application/json", examples = {
-                    @ExampleObject(name = "Patch status example", value = "{\"statusId\": 3}")
-            })) @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Integer> body) {
-        Integer statusId = body.get("statusId");
-        var updated = tarefaService.updateStatus(id, statusId);
+                    @ExampleObject(name = "Patch status example", value = "{\"statusId\": 4,\"blockedBy\":\"Dependência externa pendente\"}")
+            })) @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Object> body) {
+        Object rawStatusId = body.get("statusId");
+        Integer statusId = rawStatusId instanceof Number
+                ? ((Number) rawStatusId).intValue()
+                : null;
+        Object rawBlockedBy = body.get("blockedBy");
+        String blockedBy = rawBlockedBy == null ? null : String.valueOf(rawBlockedBy).trim();
+        if (blockedBy != null && blockedBy.isBlank()) blockedBy = null;
+        Object rawStartDate = body.get("startDate");
+        java.time.LocalDate startDate = null;
+        if (rawStartDate != null && !String.valueOf(rawStartDate).isBlank()) {
+            try {
+                startDate = java.time.LocalDate.parse(String.valueOf(rawStartDate));
+            } catch (java.time.format.DateTimeParseException ignored) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST,
+                        "Data de início inválida. Use o formato yyyy-MM-dd.");
+            }
+        }
+        Object rawHoursSpent = body.get("hoursSpent");
+        Integer hoursSpent = rawHoursSpent instanceof Number
+                ? ((Number) rawHoursSpent).intValue()
+                : null;
+        var updated = tarefaService.updateStatus(id, statusId, blockedBy, startDate, hoursSpent);
         return ResponseEntity.ok(updated);
     }
 }

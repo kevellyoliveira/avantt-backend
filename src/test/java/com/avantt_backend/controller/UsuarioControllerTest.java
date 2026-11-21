@@ -85,7 +85,7 @@ class UsuarioControllerTest {
 
     private void configurarAutenticacao() {
 
-        when(authService.obterUsuarioAutenticado(TOKEN))
+        when(authService.obterGestorAutenticado(TOKEN))
                 .thenReturn(criarUsuarioAutenticado());
     }
 
@@ -115,7 +115,7 @@ class UsuarioControllerTest {
                 .andExpect(jsonPath("$.id").value("1"))
                 .andExpect(jsonPath("$.name").value("Bruno"));
 
-        verify(authService).obterUsuarioAutenticado(TOKEN);
+        verify(authService).obterGestorAutenticado(TOKEN);
 
         verify(usuarioService).create(
                 any(UsuarioRequestDTO.class),
@@ -239,7 +239,7 @@ class UsuarioControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
 
-        verify(authService).obterUsuarioAutenticado(TOKEN);
+        verify(authService).obterGestorAutenticado(TOKEN);
 
         verify(usuarioService).create(
                 any(UsuarioRequestDTO.class),

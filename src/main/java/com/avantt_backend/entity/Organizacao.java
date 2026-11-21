@@ -20,6 +20,9 @@ public class Organizacao {
     @Column(name = "telefone", length = 20)
     private String telefone;
 
+    @Column(name = "contato", length = 200)
+    private String contato;
+
     @Column(name = "cnpj", length = 20, unique = true)
     private String cnpj;
 
@@ -46,6 +49,9 @@ public class Organizacao {
 
     public String getTelefone() { return telefone; }
     public void setTelefone(String telefone) { this.telefone = telefone; }
+
+    public String getContato() { return contato; }
+    public void setContato(String contato) { this.contato = contato; }
 
     public String getCnpj() { return cnpj; }
     public void setCnpj(String cnpj) { this.cnpj = cnpj; }

@@ -24,7 +24,20 @@ public class AuthResponseDTO {
         usuarioDTO.setId(String.valueOf(usuarioSalvo.getId()));
         usuarioDTO.setName(usuarioSalvo.getNome());
         usuarioDTO.setEmail(usuarioSalvo.getEmail());
-        usuarioDTO.setRole(usuarioSalvo.getCargo());
+        String papel = usuarioSalvo.getPapel();
+        if (papel != null
+                && (papel.toLowerCase().contains("developer")
+                        || papel.toLowerCase().contains("desenvol"))) {
+            usuarioDTO.setRole("Desenvolvedor");
+        } else if (papel != null
+                && (papel.toLowerCase().contains("manager")
+                        || papel.toLowerCase().contains("gestor")
+                        || papel.toLowerCase().contains("gerente"))) {
+            usuarioDTO.setRole("Gerente");
+        } else {
+            usuarioDTO.setRole(usuarioSalvo.getCargo());
+        }
+        usuarioDTO.setPapel(papel);
         usuarioDTO.setAvatar(gerarIniciais(usuarioSalvo.getNome()));
         usuarioDTO.setColor("#2563eb");
         usuarioDTO.setOrganizacaoId(usuarioSalvo.getOrganizacaoId());

@@ -28,6 +28,10 @@ public class OrganizacaoRequestDTO {
     @JsonAlias({"telefone", "phone"})
     private String telefone;
 
+    @Size(max = 200)
+    @JsonAlias({"contato", "contact"})
+    private String contato;
+
     // Accept either 14 digits (unformatted) or the common formatted CNPJ 00.000.000/0000-00
     @Pattern(regexp = "^(\\d{14}|\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2})$", message = "cnpj inválido. Use 14 dígitos ou 00.000.000/0000-00")
     @JsonAlias({"cnpj", "document", "documento"})
@@ -54,6 +58,9 @@ public class OrganizacaoRequestDTO {
 
     public String getTelefone() { return telefone; }
     public void setTelefone(String telefone) { this.telefone = telefone; }
+
+    public String getContato() { return contato; }
+    public void setContato(String contato) { this.contato = contato; }
 
     public String getCnpj() { return cnpj; }
     public void setCnpj(String cnpj) { this.cnpj = cnpj; }

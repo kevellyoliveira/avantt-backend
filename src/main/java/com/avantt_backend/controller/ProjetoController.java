@@ -334,15 +334,6 @@ public class ProjetoController {
                     )
             ),
             @ApiResponse(
-                    responseCode = "404",
-                    description = "Nenhum projeto encontrado",
-                    content = @Content(
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
-            ),
-            @ApiResponse(
                     responseCode = "500",
                     description = "Erro interno do servidor",
                     content = @Content(
@@ -370,12 +361,6 @@ public class ProjetoController {
                         usuario.getOrganizacaoId(),
                         usuario.getId()
                 );
-
-        if (list.isEmpty()) {
-            throw new com.avantt_backend.exception.ResourceNotFoundException(
-                    MENSAGEM_ERRO_LISTAR_PROJETOS_404
-            );
-        }
 
         return ResponseEntity.ok(list);
     }

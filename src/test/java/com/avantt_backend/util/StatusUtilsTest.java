@@ -52,13 +52,14 @@ class StatusUtilsTest {
     }
 
     @Test
-    void isValidTaskStatus_rejectsRemovedLifecycleStatuses() {
+    void isValidTaskStatus_acceptsCompleteLifecycle() {
         assertTrue(StatusUtils.isValidTaskStatus("Planejada"));
         assertTrue(StatusUtils.isValidTaskStatus("Em andamento"));
         assertTrue(StatusUtils.isValidTaskStatus("Concluída"));
         assertTrue(StatusUtils.isValidTaskStatus("Bloqueada"));
+        assertTrue(StatusUtils.isValidTaskStatus("Revisão"));
+        assertTrue(StatusUtils.isValidTaskStatus("Cancelada"));
         assertFalse(StatusUtils.isValidTaskStatus("Pausada"));
-        assertFalse(StatusUtils.isValidTaskStatus("Cancelada"));
     }
 
     @Test

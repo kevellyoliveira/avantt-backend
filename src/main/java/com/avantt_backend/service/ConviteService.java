@@ -6,6 +6,7 @@ import com.avantt_backend.dto.AuthResponseDTO;
 import com.avantt_backend.entity.Usuario;
 import com.avantt_backend.repository.UsuarioRepository;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -20,12 +21,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Service
 public class ConviteService {
-    private static final Logger logger = LoggerFactory.getLogger(ConviteService.class);
+    @Value("${app.frontend.url:http://localhost:8443}")
+    private String frontendUrl;
 
     private final UsuarioRepository usuarioRepository;
     private final EmailService emailService;
@@ -80,11 +80,6 @@ public class ConviteService {
 
         String codigo = gerarCodigo();
         String codigoHash = gerarHash(codigo);
-        logger.warn(
-                "Código temporário de primeiro acesso para {}: {}",
-                usuario.getEmail(),
-                codigo
-        );
 
         usuario.setConviteTokenHash(codigoHash);
         usuario.setConviteTokenExpiry(agora.plusMinutes(15));
@@ -96,11 +91,19 @@ public class ConviteService {
 
         usuarioRepository.save(usuario);
 
+        boolean precisaDefinirSenha =
+                usuario.getSenha() == null || usuario.getSenha().isBlank();
+        String conviteUrl = removerBarraFinal(frontendUrl)
+                + "/?convite=1&email="
+                + URLEncoder.encode(usuario.getEmail(), StandardCharsets.UTF_8);
+        String instrucoes = precisaDefinirSenha
+                ? "Abra o link abaixo, informe seu e-mail, este código e defina sua senha:\n\n"
+                        + conviteUrl + "\n\n"
+                : "Faça login com sua senha cadastrada e informe o código na tela de primeiro acesso.\n\n";
         String mensagem =
                 "Olá, " + usuario.getNome() + "!\n\n"
-                        + "Você foi vinculado a um projeto na plataforma AVANTT.\n\n"
-                        + "Para confirmar seu primeiro acesso, informe o código abaixo "
-                        + "na tela de validação após fazer login:\n\n"
+                        + "Você foi convidado para a plataforma AVANTT.\n\n"
+                        + instrucoes
                         + "Código: " + codigo + "\n\n"
                         + "Este código é válido por 15 minutos e pode ser utilizado "
                         + "uma única vez.\n\n"
@@ -138,7 +141,7 @@ public class ConviteService {
 
         String email = req.getEmail().trim().toLowerCase();
 
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        Usuario usuario = usuarioRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
                         "Dados de validação inválidos."
@@ -151,12 +154,17 @@ public class ConviteService {
             );
         }
 
-        if (usuario.getSenha() == null
-                || !passwordEncoder.matches(req.getPassword(), usuario.getSenha())) {
+        boolean definirSenha =
+                usuario.getSenha() == null || usuario.getSenha().isBlank();
+        if (req.getPassword().length() < 8
+                || (!definirSenha
+                        && !passwordEncoder.matches(req.getPassword(), usuario.getSenha()))) {
 
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
-                    "E-mail ou senha inválidos."
+                    definirSenha
+                            ? "A senha deve ter pelo menos 8 caracteres."
+                            : "E-mail ou senha inválidos."
             );
         }
 
@@ -190,6 +198,10 @@ public class ConviteService {
                     HttpStatus.BAD_REQUEST,
                     "Código de primeiro acesso inválido."
             );
+        }
+
+        if (definirSenha) {
+            usuario.setSenha(passwordEncoder.encode(req.getPassword()));
         }
 
         usuario.setPrimeiroAcessoValidado(true);
@@ -236,5 +248,9 @@ public class ConviteService {
                     e
             );
         }
+    }
+
+    private String removerBarraFinal(String url) {
+        return url == null ? "" : url.replaceAll("/+$", "");
     }
 }

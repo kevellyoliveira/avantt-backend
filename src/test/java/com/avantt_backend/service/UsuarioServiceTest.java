@@ -41,6 +41,12 @@ class UsuarioServiceTest {
     private ExistenceRepository existenceRepository;
 
     @Mock
+    private ProjetoService projetoService;
+
+    @Mock
+    private ConviteService conviteService;
+
+    @Mock
     private EntityManager em;
 
     @InjectMocks
@@ -71,7 +77,7 @@ class UsuarioServiceTest {
         UsuarioRequestDTO dto =
                 buildRequest("Ana", "ana@example.com", 1);
 
-        when(usuarioRepository.existsByEmail(dto.getEmail()))
+        when(usuarioRepository.existsByEmailIgnoreCase(dto.getEmail()))
                 .thenReturn(true);
 
         assertThrows(
@@ -79,7 +85,7 @@ class UsuarioServiceTest {
                 () -> usuarioService.create(dto, ORGANIZACAO_ID)
         );
 
-        verify(usuarioRepository).existsByEmail(dto.getEmail());
+        verify(usuarioRepository).existsByEmailIgnoreCase(dto.getEmail());
         verifyNoInteractions(existenceRepository);
         verify(usuarioRepository, never()).save(any(Usuario.class));
     }
@@ -88,9 +94,9 @@ class UsuarioServiceTest {
     void create_withValidData_savesAndReturnsDto() {
 
         UsuarioRequestDTO dto =
-                buildRequest("Bruno Lima", "bruno@example.com", 2);
+                buildRequest("Bruno Lima", " Bruno@Example.com ", 2);
 
-        when(usuarioRepository.existsByEmail(dto.getEmail()))
+        when(usuarioRepository.existsByEmailIgnoreCase("bruno@example.com"))
                 .thenReturn(false);
 
         when(existenceRepository.existsPerfilById(dto.getPerfilId()))
@@ -117,7 +123,7 @@ class UsuarioServiceTest {
         assertNotNull(res.getProjects());
         assertNotNull(res.getTasks());
 
-        verify(usuarioRepository).existsByEmail(dto.getEmail());
+        verify(usuarioRepository).existsByEmailIgnoreCase("bruno@example.com");
         verify(existenceRepository).existsPerfilById(dto.getPerfilId());
 
         verify(usuarioRepository).save(argThat(usuario ->
@@ -128,6 +134,34 @@ class UsuarioServiceTest {
 
         verify(em).flush();
         verify(em).refresh(any(Usuario.class));
+        verify(conviteService).convidarSeNecessario(1);
+        verifyNoInteractions(projetoService);
+    }
+
+    @Test
+    void create_withProjectIdsLinksMemberThroughProjectService() {
+        UsuarioRequestDTO dto =
+                buildRequest("Bruno Lima", "bruno@example.com", 2);
+        dto.setProjectIds(java.util.List.of(4, 5));
+
+        when(usuarioRepository.existsByEmailIgnoreCase(dto.getEmail()))
+                .thenReturn(false);
+        when(existenceRepository.existsPerfilById(dto.getPerfilId()))
+                .thenReturn(true);
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> {
+                    Usuario usuario = invocation.getArgument(0);
+                    usuario.setId(1);
+                    return usuario;
+                });
+
+        usuarioService.create(dto, ORGANIZACAO_ID);
+
+        verify(projetoService).adicionarUsuarioAProjetos(
+                ORGANIZACAO_ID,
+                1,
+                dto.getProjectIds());
+        verifyNoInteractions(conviteService);
     }
 
     @Test
@@ -136,7 +170,7 @@ class UsuarioServiceTest {
         UsuarioRequestDTO dto =
                 buildRequest("Carlos", "carlos@example.com", 99);
 
-        when(usuarioRepository.existsByEmail(dto.getEmail()))
+        when(usuarioRepository.existsByEmailIgnoreCase(dto.getEmail()))
                 .thenReturn(false);
 
         when(existenceRepository.existsPerfilById(dto.getPerfilId()))
@@ -149,7 +183,7 @@ class UsuarioServiceTest {
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
 
-        verify(usuarioRepository).existsByEmail(dto.getEmail());
+        verify(usuarioRepository).existsByEmailIgnoreCase(dto.getEmail());
         verify(existenceRepository).existsPerfilById(dto.getPerfilId());
         verify(usuarioRepository, never()).save(any(Usuario.class));
     }
@@ -233,7 +267,7 @@ class UsuarioServiceTest {
         UsuarioRequestDTO dto = new UsuarioRequestDTO();
         dto.setEmail("taken@example.com");
 
-        when(usuarioRepository.existsByEmail(dto.getEmail()))
+        when(usuarioRepository.existsByEmailIgnoreCase(dto.getEmail()))
                 .thenReturn(true);
 
         assertThrows(
@@ -242,7 +276,7 @@ class UsuarioServiceTest {
         );
 
         verify(usuarioRepository).findById(7);
-        verify(usuarioRepository).existsByEmail(dto.getEmail());
+        verify(usuarioRepository).existsByEmailIgnoreCase(dto.getEmail());
         verify(usuarioRepository, never()).save(any(Usuario.class));
     }
 
@@ -257,7 +291,7 @@ class UsuarioServiceTest {
         when(usuarioRepository.findById(2))
                 .thenReturn(Optional.of(existing));
 
-        when(usuarioRepository.existsByEmail("new@example.com"))
+        when(usuarioRepository.existsByEmailIgnoreCase("new@example.com"))
                 .thenReturn(false);
 
         when(usuarioRepository.save(existing))
@@ -274,7 +308,7 @@ class UsuarioServiceTest {
         assertEquals("new@example.com", res.getEmail());
 
         verify(usuarioRepository).findById(2);
-        verify(usuarioRepository).existsByEmail("new@example.com");
+        verify(usuarioRepository).existsByEmailIgnoreCase("new@example.com");
         verify(usuarioRepository).save(existing);
     }
 

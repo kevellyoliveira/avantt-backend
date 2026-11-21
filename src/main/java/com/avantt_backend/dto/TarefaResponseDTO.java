@@ -31,10 +31,14 @@ public class TarefaResponseDTO {
     private LocalDate plannedEnd;
 
     private Integer estimatedHours;
+    private Integer hoursSpent;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate startDate;
     private String blockedBy;
     private String description;
     private List<Integer> tagIds;
     private Integer sprintProgress;
+    private Integer progress;
 
     public TarefaResponseDTO() {
     }
@@ -175,6 +179,12 @@ public class TarefaResponseDTO {
         this.estimatedHours = estimatedHours;
     }
 
+    public Integer getHoursSpent() { return hoursSpent; }
+    public void setHoursSpent(Integer hoursSpent) { this.hoursSpent = hoursSpent; }
+
+    public LocalDate getStartDate() { return startDate; }
+    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+
     public String getBlockedBy() {
         return blockedBy;
     }
@@ -205,5 +215,13 @@ public class TarefaResponseDTO {
 
     public void setSprintProgress(Integer sprintProgress) {
         this.sprintProgress = sprintProgress;
+    }
+
+    public Integer getProgress() {
+        return progress;
+    }
+
+    public void setProgress(Integer progress) {
+        this.progress = progress;
     }
 }

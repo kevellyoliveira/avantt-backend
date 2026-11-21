@@ -95,6 +95,8 @@ public class ProjetoService {
                         organizacaoId.equals(projeto.getOrganizacaoId())
                                 || projetosDoUsuario.contains(projeto.getId())
                 )
+                .peek(projeto -> sprintService.recalculateAndPersistProjectProgress(projeto.getId()))
+                .map(projeto -> projetoRepository.findById(projeto.getId()).orElse(projeto))
                 .map(this::toFrontend)
                 .collect(Collectors.toList());
     }
@@ -155,11 +157,7 @@ public class ProjetoService {
 
         p.setEndDate(dto.getEndDate());
 
-        p.setProgress(
-                dto.getProgress() != null
-                        ? dto.getProgress()
-                        : 0
-        );
+        p.setProgress(0);
 
         Projeto saved = projetoRepository.save(p);
 
@@ -173,6 +171,7 @@ public class ProjetoService {
 
         salvarMarcos(saved, dto.getMilestones());
         salvarRiscos(saved, dto.getRisks());
+        sprintService.recalculateAndPersistProjectProgress(saved.getId());
 
         return toFrontend(saved);
     }
@@ -232,9 +231,6 @@ public class ProjetoService {
         p.setStartDate(newStart);
         p.setEndDate(newEnd);
 
-        if (dto.getProgress() != null) {
-            p.setProgress(dto.getProgress());
-        }
 
         if (dto.getTeam() != null) {
             sincronizarEquipe(p, dto.getTeam());
@@ -261,6 +257,7 @@ public class ProjetoService {
         }
 
         Projeto saved = projetoRepository.save(p);
+        sprintService.recalculateAndPersistProjectProgress(saved.getId());
 
         return toFrontend(saved);
     }
@@ -279,6 +276,32 @@ public class ProjetoService {
                 ));
 
         return toFrontend(projeto);
+    }
+
+    @Transactional
+    public void adicionarUsuarioAProjetos(
+            Integer organizacaoId,
+            Integer usuarioId,
+            List<Integer> projetoIds) {
+
+        if (projetoIds == null || projetoIds.isEmpty()) {
+            return;
+        }
+
+        for (Integer projetoId : new HashSet<>(projetoIds)) {
+            if (projetoId == null) {
+                throw new ApiException("Projeto inválido na lista de projetos.");
+            }
+
+            Projeto projeto = projetoRepository
+                    .findByIdAndOrganizacaoId(projetoId, organizacaoId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Projeto não encontrado: id=" + projetoId
+                    ));
+
+            adicionarUsuarioEquipe(projeto, usuarioId);
+        }
     }
 
     // Listar todos os projetos

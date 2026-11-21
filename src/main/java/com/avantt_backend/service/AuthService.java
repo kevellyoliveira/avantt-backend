@@ -218,6 +218,41 @@ public class AuthService {
         return usuario;
     }
 
+    @Transactional(readOnly = true)
+    public Usuario obterGestorAutenticado(String token) {
+        Usuario usuario = obterUsuarioAutenticado(token);
+
+        String cargo = usuario.getCargo();
+        String papel = usuario.getPapel();
+        boolean cargoGerencial = cargo != null && (
+                cargo.toLowerCase().contains("admin")
+                        || cargo.toLowerCase().contains("gestor")
+                        || cargo.toLowerCase().contains("gerente"));
+        boolean papelGerencial = papel != null
+                && (papel.toLowerCase().contains("manager")
+                        || papel.toLowerCase().contains("gestor")
+                        || papel.toLowerCase().contains("gerente"));
+
+        boolean perfilGerencial = usuario.getPerfilId() != null
+                && perfilRepository.findById(usuario.getPerfilId())
+                        .map(perfil -> {
+                            String nome = perfil.getNome();
+                            return nome != null && (
+                                    nome.toLowerCase().contains("admin")
+                                            || nome.toLowerCase().contains("gestor")
+                                            || nome.toLowerCase().contains("gerente"));
+                        })
+                        .orElse(false);
+
+        if (!cargoGerencial && !papelGerencial && !perfilGerencial) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Apenas gestores podem gerenciar convites e membros.");
+        }
+
+        return usuario;
+    }
+
     /**
      * Valida e-mail e senha.
      *
@@ -271,6 +306,7 @@ public class AuthService {
         }
 
         String cargo = u.getCargo();
+        String papel = u.getPapel();
         boolean cargoGerencial = cargo != null && (
                 cargo.toLowerCase().contains("admin")
                         || cargo.toLowerCase().contains("gestor")
@@ -278,15 +314,23 @@ public class AuthService {
         boolean cargoDesenvolvedor = cargo != null && (
                 cargo.toLowerCase().contains("colaborador")
                         || cargo.toLowerCase().contains("desenvol"));
+        boolean papelGerencial = papel != null
+                && (papel.toLowerCase().contains("manager")
+                        || papel.toLowerCase().contains("gestor")
+                        || papel.toLowerCase().contains("gerente"));
+        boolean papelDesenvolvedor = papel != null
+                && (papel.toLowerCase().contains("developer")
+                        || papel.toLowerCase().contains("desenvol"));
 
         if (!Boolean.TRUE.equals(u.getPrimeiroAcessoValidado())
-                && (perfilGerencial || cargoGerencial)) {
+                && (perfilGerencial || cargoGerencial || papelGerencial)) {
             u.setPrimeiroAcessoValidado(true);
         }
 
         if (!Boolean.TRUE.equals(u.getPrimeiroAcessoValidado())
                 && !perfilDesenvolvedor
-                && !cargoDesenvolvedor) {
+                && !cargoDesenvolvedor
+                && !papelDesenvolvedor) {
             u.setPrimeiroAcessoValidado(true);
         }
 
@@ -414,6 +458,7 @@ public class AuthService {
         dto.setName(usuario.getNome());
         dto.setEmail(usuario.getEmail());
         dto.setRole(usuario.getCargo());
+        dto.setPapel(usuario.getPapel());
         dto.setAvatar(generateInitials(usuario.getNome()));
         dto.setColor("#2563eb");
 

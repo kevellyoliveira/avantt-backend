@@ -29,6 +29,10 @@ public class RegisterOrganizacaoRequestDTO {
     private String organizationName;
     private String cnpj;
     private String emailContato;
+    @JsonAlias({"phone", "telefone"})
+    private String telefone;
+    @JsonAlias({"contact", "contato"})
+    private String contato;
     private Boolean isAtivo;
 
     public RegisterOrganizacaoRequestDTO() {}
@@ -59,6 +63,12 @@ public class RegisterOrganizacaoRequestDTO {
 
     public String getEmailContato() { return emailContato; }
     public void setEmailContato(String emailContato) { this.emailContato = emailContato; }
+
+    public String getTelefone() { return telefone; }
+    public void setTelefone(String telefone) { this.telefone = telefone; }
+
+    public String getContato() { return contato; }
+    public void setContato(String contato) { this.contato = contato; }
 
     public Boolean getIsAtivo() { return isAtivo; }
     public void setIsAtivo(Boolean isAtivo) { this.isAtivo = isAtivo; }

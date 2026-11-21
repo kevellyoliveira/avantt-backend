@@ -42,7 +42,9 @@ public final class StatusUtils {
         if (s.contains("to do") || s.contains("todo") || s.contains("planej")) return "planejada";
         if (s.contains("in progress") || s.contains("inprogress") || s.contains("andam")) return "em andamento";
         if (s.contains("bloque") || s.contains("block")) return "bloqueada";
+        if (s.contains("revis")) return "revisão";
         if (s.contains("done") || s.contains("concl")) return "concluída";
+        if (s.contains("cancel")) return "cancelada";
         return s;
     }
 
@@ -51,7 +53,9 @@ public final class StatusUtils {
         return "planejada".equals(normalized)
                 || "em andamento".equals(normalized)
                 || "concluída".equals(normalized)
-                || "bloqueada".equals(normalized);
+                || "bloqueada".equals(normalized)
+                || "revisão".equals(normalized)
+                || "cancelada".equals(normalized);
     }
 
     public static String normalizePriority(String raw) {

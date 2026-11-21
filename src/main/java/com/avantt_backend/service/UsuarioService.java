@@ -18,21 +18,29 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Locale;
+
 @Service
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final ExistenceRepository existenceRepository;
+    private final ProjetoService projetoService;
+    private final ConviteService conviteService;
 
     @PersistenceContext
     private EntityManager em;
 
     public UsuarioService(
             UsuarioRepository usuarioRepository,
-            ExistenceRepository existenceRepository) {
+            ExistenceRepository existenceRepository,
+            ProjetoService projetoService,
+            ConviteService conviteService) {
 
         this.usuarioRepository = usuarioRepository;
         this.existenceRepository = existenceRepository;
+        this.projetoService = projetoService;
+        this.conviteService = conviteService;
     }
 
     /*
@@ -58,7 +66,9 @@ public class UsuarioService {
                     "A organização do usuário autenticado não foi identificada.");
         }
 
-        if (usuarioRepository.existsByEmail(dto.getEmail())) {
+        String email = dto.getEmail().trim().toLowerCase(Locale.ROOT);
+
+        if (usuarioRepository.existsByEmailIgnoreCase(email)) {
             throw new ConflictException("Email já cadastrado");
         }
 
@@ -66,8 +76,11 @@ public class UsuarioService {
 
         entity.setOrganizacaoId(organizacaoId);
         entity.setNome(dto.getName());
-        entity.setEmail(dto.getEmail());
+        entity.setEmail(email);
         entity.setCargo(dto.getRole());
+        if (dto.getPapel() != null) {
+            entity.setPapel(dto.getPapel().trim().toLowerCase(Locale.ROOT));
+        }
         if (dto.getCpf() != null) {
             entity.setCpf(dto.getCpf());
         }
@@ -88,6 +101,15 @@ public class UsuarioService {
         em.flush();
         em.refresh(saved);
 
+        if (dto.getProjectIds() == null || dto.getProjectIds().isEmpty()) {
+            conviteService.convidarSeNecessario(saved.getId());
+        } else {
+            projetoService.adicionarUsuarioAProjetos(
+                    organizacaoId,
+                    saved.getId(),
+                    dto.getProjectIds());
+        }
+
         UsuarioResponseDTO f = new UsuarioResponseDTO();
 
         f.setId(
@@ -98,6 +120,7 @@ public class UsuarioService {
         f.setName(saved.getNome());
         f.setEmail(saved.getEmail());
         f.setRole(saved.getCargo());
+        f.setPapel(saved.getPapel());
 
         f.setAvatar(
                 dto.getAvatar() == null
@@ -138,14 +161,22 @@ public class UsuarioService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Usuário não encontrado"));
 
-        if (dto.getEmail() != null
-                && !dto.getEmail().equals(u.getEmail())) {
+        if (dto.getEmail() != null) {
+            String email = dto.getEmail().trim().toLowerCase(Locale.ROOT);
 
-            if (usuarioRepository.existsByEmail(dto.getEmail())) {
-                throw new ConflictException("Email já cadastrado");
+            if (email.isBlank()) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "E-mail é obrigatório.");
             }
 
-            u.setEmail(dto.getEmail());
+            if (!email.equalsIgnoreCase(u.getEmail().trim())) {
+                if (usuarioRepository.existsByEmailIgnoreCase(email)) {
+                    throw new ConflictException("Email já cadastrado");
+                }
+
+                u.setEmail(email);
+            }
         }
 
         if (dto.getName() != null) {
@@ -154,6 +185,9 @@ public class UsuarioService {
 
         if (dto.getRole() != null) {
             u.setCargo(dto.getRole());
+        }
+        if (dto.getPapel() != null) {
+            u.setPapel(dto.getPapel().trim().toLowerCase(Locale.ROOT));
         }
         if (dto.getCpf() != null) {
             u.setCpf(dto.getCpf().isBlank() ? null : dto.getCpf().trim());
@@ -176,6 +210,7 @@ public class UsuarioService {
         f.setName(saved.getNome());
         f.setEmail(saved.getEmail());
         f.setRole(saved.getCargo());
+        f.setPapel(saved.getPapel());
 
         f.setAvatar(
                 dto.getAvatar() == null
@@ -213,7 +248,7 @@ public class UsuarioService {
 
     public java.util.List<UsuarioResponseDTO> listAvailable() {
         String sql =
-                "SELECT u.id, u.nome, u.email, u.cargo "
+                "SELECT u.id, u.nome, u.email, u.cargo, u.papel "
                         + "FROM usuario u "
                         + "LEFT JOIN projeto_usuario pu ON pu.usuario_id = u.id "
                         + "WHERE pu.usuario_id IS NULL "
@@ -237,12 +272,53 @@ public class UsuarioService {
             u.setName(row[1] == null ? "" : row[1].toString());
             u.setEmail(row[2] == null ? "" : row[2].toString());
             u.setRole(row[3] == null ? "Colaborador" : row[3].toString());
+            u.setPapel(row[4] == null ? null : row[4].toString());
             u.setAvatar(generateInitials(u.getName()));
             u.setColor("#4B7BF5");
             u.setTasks(new TasksDTO(0, 0, 0, 0));
             u.setProjects(new java.util.ArrayList<>());
             u.setWorkload(0);
             available.add(u);
+        }
+
+        return available;
+    }
+
+    public java.util.List<UsuarioResponseDTO> listAvailable(String email) {
+        String sql =
+                "SELECT u.id, u.nome, u.email, u.cargo, u.papel "
+                        + "FROM usuario u "
+                        + "LEFT JOIN projeto_usuario pu ON pu.usuario_id = u.id "
+                        + "WHERE pu.usuario_id IS NULL "
+                        + "AND u.is_ativo = TRUE "
+                        + "AND u.primeiro_acesso_validado = FALSE "
+                        + "AND LOWER(u.email) = LOWER(:email) "
+                        + "ORDER BY u.nome";
+
+        var query = em.createNativeQuery(sql);
+        query.setParameter("email", email.trim());
+
+        @SuppressWarnings("unchecked")
+        java.util.List<Object[]> rows = query.getResultList();
+        java.util.List<UsuarioResponseDTO> available =
+                new java.util.ArrayList<>();
+
+        for (Object[] row : rows) {
+            Integer id = row[0] == null ? null : ((Number) row[0]).intValue();
+            if (id == null) continue;
+
+            UsuarioResponseDTO user = new UsuarioResponseDTO();
+            user.setId(String.valueOf(id));
+            user.setName(row[1] == null ? "" : row[1].toString());
+            user.setEmail(row[2] == null ? "" : row[2].toString());
+            user.setRole(row[3] == null ? "Colaborador" : row[3].toString());
+            user.setPapel(row[4] == null ? null : row[4].toString());
+            user.setAvatar(generateInitials(user.getName()));
+            user.setColor("#4B7BF5");
+            user.setTasks(new TasksDTO(0, 0, 0, 0));
+            user.setProjects(new java.util.ArrayList<>());
+            user.setWorkload(0);
+            available.add(user);
         }
 
         return available;
@@ -257,7 +333,7 @@ public class UsuarioService {
                 new java.util.LinkedHashMap<>();
         String sql =
                 "SELECT u.id AS usuario_id, u.nome AS usuario_nome, "
-                        + "u.email, u.cargo, u.is_ativo, "
+                        + "u.email, u.cargo, u.papel, u.is_ativo, "
                         + "p.id AS projeto_id, p.nome AS projeto_nome "
                         + "FROM usuario u "
                         + "LEFT JOIN projeto_usuario pu ON pu.usuario_id = u.id "
@@ -278,7 +354,7 @@ public class UsuarioService {
             String nome = row[1] == null ? "" : row[1].toString();
             String email = row[2] == null ? "" : row[2].toString();
             String cargo = row[3] == null ? "" : row[3].toString();
-            String projetoNome = row[6] == null ? null : row[6].toString();
+            String projetoNome = row[7] == null ? null : row[7].toString();
 
             UsuarioResponseDTO u = map.computeIfAbsent(uid, id -> {
                 UsuarioResponseDTO member = new UsuarioResponseDTO();
@@ -286,6 +362,7 @@ public class UsuarioService {
                 member.setName(nome);
                 member.setEmail(email);
                 member.setRole(cargo);
+                member.setPapel(row[4] == null ? null : row[4].toString());
                 member.setAvatar(generateInitials(nome));
                 member.setColor("#4B7BF5");
                 member.setTasks(new TasksDTO(0, 0, 0, 0));
@@ -309,7 +386,7 @@ public class UsuarioService {
         if (projetoId != null) {
 
             String sql =
-                    "SELECT u.id, u.nome, u.email, u.cargo FROM usuario u "
+                    "SELECT u.id, u.nome, u.email, u.cargo, u.papel FROM usuario u "
                             + "JOIN projeto_usuario pu ON pu.usuario_id = u.id "
                             + "WHERE pu.projeto_id = :pid AND u.is_ativo = TRUE "
                             + "ORDER BY u.nome";
@@ -329,6 +406,7 @@ public class UsuarioService {
                 String nome = row[1] == null ? "" : row[1].toString();
                 String email = row[2] == null ? "" : row[2].toString();
                 String cargo = row[3] == null ? "" : row[3].toString();
+                String papel = row[4] == null ? null : row[4].toString();
 
                 UsuarioResponseDTO u = new UsuarioResponseDTO();
 
@@ -336,6 +414,7 @@ public class UsuarioService {
                 u.setName(nome);
                 u.setEmail(email);
                 u.setRole(cargo);
+                u.setPapel(papel);
                 u.setAvatar(generateInitials(nome));
                 u.setColor("#4B7BF5");
                 u.setTasks(new TasksDTO(0, 0, 0, 0));
@@ -362,7 +441,7 @@ public class UsuarioService {
         // Listagem geral: usuários e seus projetos.
         String sql =
                 "SELECT u.id AS usuario_id, u.nome AS usuario_nome, "
-                        + "u.email, u.cargo, u.is_ativo, "
+                        + "u.email, u.cargo, u.papel, u.is_ativo, "
                         + "p.id AS projeto_id, p.nome AS projeto_nome "
                         + "FROM usuario u "
                         + "LEFT JOIN projeto_usuario pu ON pu.usuario_id = u.id "
@@ -384,10 +463,11 @@ public class UsuarioService {
             String nome = row[1] == null ? "" : row[1].toString();
             String email = row[2] == null ? "" : row[2].toString();
             String cargo = row[3] == null ? "" : row[3].toString();
+            String papel = row[4] == null ? null : row[4].toString();
 
-            String projetoNome = row[6] == null
+            String projetoNome = row[7] == null
                     ? null
-                    : row[6].toString();
+                    : row[7].toString();
 
             if (!map.containsKey(uid)) {
 
@@ -397,6 +477,7 @@ public class UsuarioService {
                 u.setName(nome);
                 u.setEmail(email);
                 u.setRole(cargo);
+                u.setPapel(papel);
                 u.setAvatar(generateInitials(nome));
                 u.setColor("#4B7BF5");
                 u.setTasks(new TasksDTO(0, 0, 0, 0));

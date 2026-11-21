@@ -37,6 +37,10 @@ public class EmailService {
                     destinatario,
                     ex
             );
+            throw new IllegalStateException(
+                    "Não foi possível enviar o e-mail de convite.",
+                    ex
+            );
         }
     }
 }

@@ -81,7 +81,7 @@ class ControllersSmokeTest {
         usuarioAutenticado.setEmail("admin@example.com");
         usuarioAutenticado.setOrganizacaoId(organizacaoId);
 
-        when(authService.obterUsuarioAutenticado(token))
+        when(authService.obterGestorAutenticado(token))
                 .thenReturn(usuarioAutenticado);
 
         when(usuarioService.create(req, organizacaoId))
@@ -95,7 +95,7 @@ class ControllersSmokeTest {
 
         assertEquals(201, r.getStatusCode().value());
 
-        verify(authService).obterUsuarioAutenticado(token);
+        verify(authService).obterGestorAutenticado(token);
         verify(usuarioService).create(req, organizacaoId);
 
         when(usuarioService.listAll(null))

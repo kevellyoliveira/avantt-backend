@@ -41,8 +41,8 @@ public class MetricsService {
     public MetricCompletionRateDTO getCompletionRate(Integer projetoId) {
         String sql = "SELECT " +
                 "SUM(CASE WHEN s.nome = 'Concluída' THEN 1 ELSE 0 END) AS concluidas, " +
-                "COUNT(*) AS total, " +
-                "ROUND(100.0 * SUM(CASE WHEN s.nome = 'Concluída' THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0),2) AS pct_conclusao " +
+                "SUM(CASE WHEN s.nome <> 'Cancelada' THEN 1 ELSE 0 END) AS total, " +
+                "ROUND(100.0 * SUM(CASE WHEN s.nome = 'Concluída' THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN s.nome <> 'Cancelada' THEN 1 ELSE 0 END),0),2) AS pct_conclusao " +
                 "FROM tarefa t JOIN status_tarefa s ON t.status_id = s.id " +
                 "WHERE t.projeto_id = :pid";
         var q = em.createNativeQuery(sql);

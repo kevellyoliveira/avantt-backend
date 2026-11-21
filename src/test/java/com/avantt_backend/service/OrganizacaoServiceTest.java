@@ -68,7 +68,10 @@ class OrganizacaoServiceTest {
         OrganizacaoRequestDTO dto = new OrganizacaoRequestDTO();
 
         dto.setNomeFantasia("Org");
-        dto.setCnpj("111");
+        dto.setCnpj("11.111.111/1111-11");
+        dto.setContato(" Ana Costa ");
+        dto.setEmailContato(" ANA@EXAMPLE.COM ");
+        dto.setTelefone("(11) 99999-1234");
 
         when(organizacaoRepository.existsByCnpj(any()))
                 .thenReturn(false);
@@ -87,6 +90,10 @@ class OrganizacaoServiceTest {
 
         assertEquals("10", response.getId());
         assertEquals("Org", response.getNomeFantasia());
+        assertEquals("11111111111111", response.getCnpj());
+        assertEquals("Ana Costa", response.getContact());
+        assertEquals("ana@example.com", response.getEmail());
+        assertEquals("11999991234", response.getPhone());
 
         verify(em).flush();
         verify(em).refresh(any(Organizacao.class));
@@ -126,6 +133,9 @@ class OrganizacaoServiceTest {
         OrganizacaoRequestDTO dto = new OrganizacaoRequestDTO();
 
         dto.setNomeFantasia("New");
+        dto.setContato(" Ana Costa ");
+        dto.setEmailContato(" ANA@EXAMPLE.COM ");
+        dto.setTelefone("(11) 99999-1234");
         dto.setIsAtivo(false);
 
         OrganizacaoResponseDTO response =
@@ -133,6 +143,9 @@ class OrganizacaoServiceTest {
 
         assertEquals("7", response.getId());
         assertEquals("New", response.getNomeFantasia());
+        assertEquals("Ana Costa", response.getContact());
+        assertEquals("ana@example.com", response.getEmail());
+        assertEquals("11999991234", response.getPhone());
         assertFalse(response.getIsAtivo());
         assertNotNull(response.getDataDesativacao());
 

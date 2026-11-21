@@ -33,11 +33,13 @@ public class OrganizacaoService {
 
         String normalizedCnpj = null;
 
-        if (dto.getCnpj() != null) {
+        if (dto.getCnpj() != null && !dto.getCnpj().isBlank()) {
 
-            normalizedCnpj = dto.getCnpj().replaceAll("\\D", "");
+            String digits = dto.getCnpj().replaceAll("\\D", "");
+            normalizedCnpj = digits.isEmpty() ? null : digits;
 
-            if (organizacaoRepository.existsByCnpj(normalizedCnpj)) {
+            if (normalizedCnpj != null
+                    && organizacaoRepository.existsByCnpj(normalizedCnpj)) {
                 throw new ConflictException("CNPJ já cadastrado");
             }
         }
@@ -46,9 +48,10 @@ public class OrganizacaoService {
 
         organizacao.setNomeFantasia(dto.getNomeFantasia());
         organizacao.setRazaoSocial(dto.getRazaoSocial());
-        organizacao.setTelefone(dto.getTelefone());
+        organizacao.setTelefone(normalizePhone(dto.getTelefone()));
+        organizacao.setContato(normalizeText(dto.getContato()));
         organizacao.setCnpj(normalizedCnpj);
-        organizacao.setEmailContato(dto.getEmailContato());
+        organizacao.setEmailContato(normalizeEmail(dto.getEmailContato()));
 
         organizacao.setIsAtivo(
                 dto.getIsAtivo() == null
@@ -87,7 +90,10 @@ public class OrganizacaoService {
             organizacao.setRazaoSocial(dto.getRazaoSocial());
         }
         if (dto.getTelefone() != null) {
-            organizacao.setTelefone(dto.getTelefone());
+            organizacao.setTelefone(normalizePhone(dto.getTelefone()));
+        }
+        if (dto.getContato() != null) {
+            organizacao.setContato(normalizeText(dto.getContato()));
         }
 
         if (dto.getCnpj() != null) {
@@ -105,7 +111,7 @@ public class OrganizacaoService {
         }
 
         if (dto.getEmailContato() != null) {
-            organizacao.setEmailContato(dto.getEmailContato());
+            organizacao.setEmailContato(normalizeEmail(dto.getEmailContato()));
         }
 
         if (dto.getIsAtivo() != null) {
@@ -161,8 +167,7 @@ public class OrganizacaoService {
         response.setTradeName(organizacao.getNomeFantasia());
         response.setLegalName(organizacao.getRazaoSocial());
         response.setPhone(organizacao.getTelefone());
-
-        // Campos não existentes na entidade permanecem nulos.
+        response.setContact(organizacao.getContato());
         response.setCnpj(
                 organizacao.getCnpj() == null
                         ? null
@@ -174,5 +179,23 @@ public class OrganizacaoService {
         response.setDataDesativacao(organizacao.getDataDesativacao());
 
         return response;
+    }
+
+    private String normalizePhone(String phone) {
+        if (phone == null) return null;
+        String digits = phone.replaceAll("\\D", "");
+        return digits.isEmpty() ? null : digits;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null) return null;
+        String trimmed = email.trim();
+        return trimmed.isEmpty() ? null : trimmed.toLowerCase();
     }
 }

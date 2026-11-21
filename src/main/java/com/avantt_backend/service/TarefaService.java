@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Collections;
@@ -337,6 +338,12 @@ public class TarefaService {
                         ? 0
                         : dto.getEstimatedHours()
         );
+        t.setHoursSpent(
+                dto.getHoursSpent() == null
+                        ? 0
+                        : Math.max(0, dto.getHoursSpent())
+        );
+        t.setDataInicio(dto.getStartDate());
 
         // Dias de atraso.
         t.setDaysDelayed(
@@ -571,6 +578,13 @@ public class TarefaService {
         // Horas estimadas.
         if (dto.getEstimatedHours() != null) {
             t.setEstimatedHours(dto.getEstimatedHours());
+        }
+
+        if (dto.getHoursSpent() != null) {
+            t.setHoursSpent(Math.max(0, dto.getHoursSpent()));
+        }
+        if (dto.getStartDate() != null) {
+            t.setDataInicio(dto.getStartDate());
         }
 
         // Bloqueio.
@@ -983,6 +997,24 @@ public class TarefaService {
     public TarefaResponseDTO updateStatus(
             Integer tarefaId,
             Integer statusId) {
+        return updateStatus(tarefaId, statusId, null);
+    }
+
+    @Transactional
+    public TarefaResponseDTO updateStatus(
+            Integer tarefaId,
+            Integer statusId,
+            String blockedBy) {
+        return updateStatus(tarefaId, statusId, blockedBy, null, null);
+    }
+
+    @Transactional
+    public TarefaResponseDTO updateStatus(
+            Integer tarefaId,
+            Integer statusId,
+            String blockedBy,
+            LocalDate startDate,
+            Integer hoursSpent) {
 
         var tOpt = tarefaRepository.findById(tarefaId);
 
@@ -1012,6 +1044,19 @@ public class TarefaService {
         t.setStatus(
                 statusNorm == null ? "planejada" : statusNorm
         );
+        if ("bloqueada".equals(statusNorm)) {
+            t.setBlockedBy(blockedBy);
+        } else {
+            t.setBlockedBy(null);
+        }
+        if (startDate != null) {
+            t.setDataInicio(startDate);
+        } else if ("em andamento".equals(statusNorm) && t.getDataInicio() == null) {
+            t.setDataInicio(LocalDate.now());
+        }
+        if (hoursSpent != null) {
+            t.setHoursSpent(Math.max(0, hoursSpent));
+        }
 
         Tarefa saved = tarefaRepository.save(t);
 
@@ -1069,6 +1114,20 @@ public class TarefaService {
 
             tarefaTagRepository.save(tt);
         }
+    }
+
+    private int taskStatusProgress(Tarefa tarefa, String status) {
+        if ("concluída".equals(status) || "concluida".equals(status)) return 100;
+
+        int estimated = tarefa.getEstimatedHours() == null
+                ? 0
+                : tarefa.getEstimatedHours();
+        int spent = tarefa.getHoursSpent() == null
+                ? 0
+                : tarefa.getHoursSpent();
+
+        if (estimated <= 0) return 0;
+        return Math.min(100, (int) Math.round(spent * 100.0 / estimated));
     }
 
     /*
@@ -1179,6 +1238,7 @@ public class TarefaService {
         r.setStatus(
                 normStatus == null ? "planejada" : normStatus
         );
+        r.setProgress(taskStatusProgress(t, normStatus));
 
         // Campos auxiliares.
         r.setDaysDelayed(
@@ -1192,6 +1252,12 @@ public class TarefaService {
                         ? 0
                         : t.getEstimatedHours()
         );
+        r.setHoursSpent(
+                t.getHoursSpent() == null
+                        ? 0
+                        : t.getHoursSpent()
+        );
+        r.setStartDate(t.getDataInicio());
 
         r.setBlockedBy(t.getBlockedBy());
 
