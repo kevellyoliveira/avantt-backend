@@ -86,6 +86,46 @@ class TarefaControllerTest {
     }
 
     @Test
+    void postCreate_pastPlannedEnd_shouldReturn400() throws Exception {
+        TarefaRequestDTO req = new TarefaRequestDTO();
+        req.setTitle("Fix");
+        req.setProjectId(1);
+        req.setSprintId(2);
+        req.setStatusId(1);
+        req.setPlannedEnd(LocalDate.now().minusDays(1));
+
+        mockMvc.perform(post("/api/tarefas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(tarefaService);
+    }
+
+    @Test
+    void putUpdate_pastPlannedEndAndNoSprint_shouldReturn200() throws Exception {
+        TarefaRequestDTO req = new TarefaRequestDTO();
+        req.setTitle("Fix");
+        req.setProjectId(1);
+        req.setSprintId(null);
+        req.setStatusId(1);
+        req.setPlannedEnd(LocalDate.now().minusDays(1));
+
+        TarefaResponseDTO resp = new TarefaResponseDTO();
+        resp.setId("5");
+        resp.setTitle("Fix");
+        when(tarefaService.update(eq(5), any(TarefaRequestDTO.class))).thenReturn(resp);
+
+        mockMvc.perform(put("/api/tarefas/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("5"));
+
+        verify(tarefaService).update(eq(5), any(TarefaRequestDTO.class));
+    }
+
+    @Test
     void patchAssignee_shouldReturn200() throws Exception {
         String json = "{\"assigneeId\": 3}";
         when(tarefaService.updateAssignee(eq(5), eq(3))).thenReturn(new TarefaResponseDTO());

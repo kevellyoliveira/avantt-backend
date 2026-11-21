@@ -44,10 +44,13 @@ class StatusControllerTest {
     void list_returnsStatusList() throws Exception {
         Status s1 = new Status(); s1.setId(1); s1.setNome("Planejada");
         Status s2 = new Status(); s2.setId(3); s2.setNome("Concluída");
-        when(repo.findAll()).thenReturn(List.of(s1, s2));
+        Status paused = new Status(); paused.setId(5); paused.setNome("Pausada");
+        Status cancelled = new Status(); cancelled.setId(6); cancelled.setNome("Cancelada");
+        when(repo.findAll()).thenReturn(List.of(s1, s2, paused, cancelled));
 
         mockMvc.perform(get("/api/status").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[1].nome").value("Concluída"));
     }

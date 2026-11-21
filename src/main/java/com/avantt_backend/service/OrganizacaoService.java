@@ -45,6 +45,8 @@ public class OrganizacaoService {
         Organizacao organizacao = new Organizacao();
 
         organizacao.setNomeFantasia(dto.getNomeFantasia());
+        organizacao.setRazaoSocial(dto.getRazaoSocial());
+        organizacao.setTelefone(dto.getTelefone());
         organizacao.setCnpj(normalizedCnpj);
         organizacao.setEmailContato(dto.getEmailContato());
 
@@ -80,6 +82,12 @@ public class OrganizacaoService {
 
         if (dto.getNomeFantasia() != null) {
             organizacao.setNomeFantasia(dto.getNomeFantasia());
+        }
+        if (dto.getRazaoSocial() != null) {
+            organizacao.setRazaoSocial(dto.getRazaoSocial());
+        }
+        if (dto.getTelefone() != null) {
+            organizacao.setTelefone(dto.getTelefone());
         }
 
         if (dto.getCnpj() != null) {
@@ -151,6 +159,8 @@ public class OrganizacaoService {
 
         response.setName(organizacao.getNomeFantasia());
         response.setTradeName(organizacao.getNomeFantasia());
+        response.setLegalName(organizacao.getRazaoSocial());
+        response.setPhone(organizacao.getTelefone());
 
         // Campos não existentes na entidade permanecem nulos.
         response.setCnpj(

@@ -82,6 +82,21 @@ public class TarefaService {
         this.tarefaTagRepository = tarefaTagRepository;
     }
 
+    private Status requireValidTaskStatus(Integer statusId) {
+        Status status = statusTarefaRepository.findById(statusId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Status não encontrado: id=" + statusId
+                ));
+        if (!StatusUtils.isValidTaskStatus(status.getNome())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Status inválido para tarefa: " + status.getNome()
+            );
+        }
+        return status;
+    }
+
     /*
      * Recalcula o progresso da sprint.
      */
@@ -290,19 +305,12 @@ public class TarefaService {
             );
         }
 
-        var stOpt = statusTarefaRepository.findById(dto.getStatusId());
-
-        if (stOpt.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Status não encontrado: id=" + dto.getStatusId()
-            );
-        }
+        Status status = requireValidTaskStatus(dto.getStatusId());
 
         t.setStatusId(dto.getStatusId());
 
         String statusNorm =
-                StatusUtils.normalizeTaskStatus(stOpt.get().getNome());
+                StatusUtils.normalizeTaskStatus(status.getNome());
 
         t.setStatus(
                 statusNorm == null ? "planejada" : statusNorm
@@ -516,19 +524,12 @@ public class TarefaService {
         // Status.
         if (dto.getStatusId() != null) {
 
-            var stOpt = statusTarefaRepository.findById(dto.getStatusId());
-
-            if (stOpt.isEmpty()) {
-                throw new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Status não encontrado: id=" + dto.getStatusId()
-                );
-            }
+            Status status = requireValidTaskStatus(dto.getStatusId());
 
             t.setStatusId(dto.getStatusId());
 
             String statusNorm =
-                    StatusUtils.normalizeTaskStatus(stOpt.get().getNome());
+                    StatusUtils.normalizeTaskStatus(status.getNome());
 
             t.setStatus(
                     statusNorm == null ? t.getStatus() : statusNorm
@@ -690,6 +691,22 @@ public class TarefaService {
     /*
      * Lista tarefas com filtros opcionais.
      */
+    public List<TarefaResponseDTO> listAll(
+            String projetoId,
+            String sprintId,
+            String status,
+            Integer organizacaoId) {
+        if (organizacaoId == null) {
+            return listAll(projetoId, sprintId, status);
+        }
+        return listAll(projetoId, sprintId, status).stream()
+                .filter(task -> task.getProject() != null
+                        && projetoRepository.findByName(task.getProject())
+                        .map(project -> organizacaoId.equals(project.getOrganizacaoId()))
+                        .orElse(false))
+                .collect(Collectors.toList());
+    }
+
     public List<TarefaResponseDTO> listAll(
             String projetoId,
             String sprintId,
@@ -983,21 +1000,14 @@ public class TarefaService {
             );
         }
 
-        var stOpt = statusTarefaRepository.findById(statusId);
-
-        if (stOpt.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Status não encontrado: id=" + statusId
-            );
-        }
+        Status status = requireValidTaskStatus(statusId);
 
         Tarefa t = tOpt.get();
 
         t.setStatusId(statusId);
 
         String statusNorm =
-                StatusUtils.normalizeTaskStatus(stOpt.get().getNome());
+                StatusUtils.normalizeTaskStatus(status.getNome());
 
         t.setStatus(
                 statusNorm == null ? "planejada" : statusNorm

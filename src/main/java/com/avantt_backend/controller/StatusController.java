@@ -34,7 +34,9 @@ public class StatusController {
             @ExampleObject(name = "Status example", value = "[{\"id\":1,\"nome\":\"Planejada\"},{\"id\":3,\"nome\":\"Concluída\"}]")
         }))
     public ResponseEntity<?> list() {
-        List<Status> all = repo.findAll();
+        List<Status> all = repo.findAll().stream()
+                .filter(status -> com.avantt_backend.util.StatusUtils.isValidTaskStatus(status.getNome()))
+                .toList();
         return ResponseEntity.ok(all);
     }
 }

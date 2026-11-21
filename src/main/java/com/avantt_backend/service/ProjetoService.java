@@ -123,18 +123,6 @@ public class ProjetoService {
         validarStatus(status);
         p.setStatus(status);
 
-        if (dto.getClienteId() != null) {
-
-            if (!clienteRepository.existsById(dto.getClienteId())) {
-                throw new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Cliente não encontrado: id=" + dto.getClienteId()
-                );
-            }
-
-            p.setClienteId(dto.getClienteId());
-        }
-
         if (organizacaoId == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -147,6 +135,16 @@ public class ProjetoService {
                     HttpStatus.NOT_FOUND,
                     "Organização não encontrada: id=" + organizacaoId
             );
+        }
+
+        if (dto.getClienteId() != null) {
+            if (!clienteRepository.existsByIdAndOrganizacaoId(dto.getClienteId(), organizacaoId)) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Cliente não encontrado: id=" + dto.getClienteId()
+                );
+            }
+            p.setClienteId(dto.getClienteId());
         }
 
         p.setOrganizacaoId(organizacaoId);
@@ -193,15 +191,14 @@ public class ProjetoService {
                         "Projeto não encontrado: id=" + projetoId
                 ));
 
-        if (dto.getClienteId() != null) {
-
-            if (!clienteRepository.existsById(dto.getClienteId())) {
+        if (dto.isClienteIdProvided()) {
+            if (dto.getClienteId() != null
+                    && !clienteRepository.existsByIdAndOrganizacaoId(dto.getClienteId(), organizacaoId)) {
                 throw new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Cliente não encontrado: id=" + dto.getClienteId()
                 );
             }
-
             p.setClienteId(dto.getClienteId());
         }
 
@@ -486,6 +483,14 @@ public class ProjetoService {
 
             projetoUsuarioRepository.save(pu);
 
+            usuarioRepository.findById(usuarioId).ifPresent(usuario -> {
+                if (usuario.getOrganizacaoId() == null
+                        || !usuario.getOrganizacaoId().equals(projeto.getOrganizacaoId())) {
+                    usuario.setOrganizacaoId(projeto.getOrganizacaoId());
+                    usuarioRepository.save(usuario);
+                }
+            });
+
             // Envia convite somente se o primeiro acesso ainda não foi validado.
             conviteService.convidarSeNecessario(usuarioId);
         }
@@ -523,6 +528,16 @@ public class ProjetoService {
         }
 
         projetoUsuarioRepository.deleteById(id);
+
+        usuarioRepository.findById(usuarioId).ifPresent(usuario -> {
+            if (!Boolean.TRUE.equals(usuario.getPrimeiroAcessoValidado())) {
+                usuario.setConviteTokenHash(null);
+                usuario.setConviteTokenExpiry(null);
+                usuario.setAuthToken(null);
+                usuario.setAuthTokenExpiry(null);
+                usuarioRepository.save(usuario);
+            }
+        });
     }
 
     // Converter entidade para DTO
@@ -709,6 +724,10 @@ public class ProjetoService {
             f.setRisks(risks);
 
             f.setClienteId(p.getClienteId());
+            if (p.getClienteId() != null) {
+                clienteRepository.findById(p.getClienteId())
+                        .ifPresent(cliente -> f.setClientName(cliente.getNome()));
+            }
             f.setOrganizacaoId(p.getOrganizacaoId());
 
             if (p.getOrganizacaoId() != null) {

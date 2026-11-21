@@ -62,9 +62,9 @@ class SprintControllerTest {
         SprintRequestDTO req = new SprintRequestDTO();
         req.setProjectId(1);
         req.setName("S1");
+        req.setStatusId(1);
         req.setStartDate(LocalDate.now());
         req.setEndDate(LocalDate.now().plusDays(20));
-        req.setStatusId(1);
 
         SprintResponseDTO resp = new SprintResponseDTO();
         resp.setId(10); resp.setName("S1");
@@ -84,7 +84,7 @@ class SprintControllerTest {
     void postCreate_missingRequired_shouldReturn400() throws Exception {
         SprintRequestDTO req = new SprintRequestDTO();
         req.setName("S");
-        // missing projectId/startDate/endDate/statusId
+        // missing projectId/startDate/endDate
 
         mockMvc.perform(post("/api/sprints")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -96,10 +96,26 @@ class SprintControllerTest {
     }
 
     @Test
+    void postCreate_missingStatusId_shouldReturn400() throws Exception {
+        SprintRequestDTO req = new SprintRequestDTO();
+        req.setProjectId(1);
+        req.setName("S1");
+        req.setStartDate(LocalDate.now());
+        req.setEndDate(LocalDate.now().plusDays(20));
+
+        mockMvc.perform(post("/api/sprints")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(sprintService);
+    }
+
+    @Test
     void putUpdate_existing_shouldReturn200() throws Exception {
         SprintRequestDTO req = new SprintRequestDTO();
         req.setName("Updated");
-        req.setStatusId(1);
+        req.setStatusId(2);
         req.setStartDate(LocalDate.now());
         req.setEndDate(LocalDate.now().plusDays(20));
 
@@ -115,6 +131,21 @@ class SprintControllerTest {
                 .andExpect(jsonPath("$.id").value(5));
 
         verify(sprintService).update(eq(5), any(SprintRequestDTO.class));
+    }
+
+    @Test
+    void putUpdate_missingStatusId_shouldReturn400() throws Exception {
+        SprintRequestDTO req = new SprintRequestDTO();
+        req.setName("Updated");
+        req.setStartDate(LocalDate.now());
+        req.setEndDate(LocalDate.now().plusDays(20));
+
+        mockMvc.perform(put("/api/sprints/5")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(sprintService);
     }
 
     @Test

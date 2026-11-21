@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
-import java.util.List;
 import com.fasterxml.jackson.annotation.JsonAlias;
 
 /**
@@ -29,10 +28,8 @@ public class ClienteRequestDTO {
     private String email;
 
     @Size(max = 50)
+    @JsonAlias({"telefone", "phone"})
     private String phone;
-
-    @JsonAlias({"usuario_gestor", "defaultUser", "default_user"})
-    private DefaultUser defaultUser;
 
     private Boolean isAtivo;
 
@@ -53,39 +50,6 @@ public class ClienteRequestDTO {
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
 
-    public DefaultUser getDefaultUser() { return defaultUser; }
-    public void setDefaultUser(DefaultUser defaultUser) { this.defaultUser = defaultUser; }
-
     public Boolean getIsAtivo() { return isAtivo; }
     public void setIsAtivo(Boolean isAtivo) { this.isAtivo = isAtivo; }
-
-    public static class DefaultUser {
-        @JsonAlias({"nome", "name"})
-        private String name;
-        @JsonAlias({"email"})
-        private String email;
-        @JsonAlias({"status","is_ativo"})
-        private String status;
-        @JsonAlias({"role","papel"})
-        private String role;
-        @JsonAlias({"projectIds","projeto_ids","project_ids"})
-        private List<String> projectIds;
-
-        public DefaultUser() {}
-
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
-
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-
-        public String getStatus() { return status; }
-        public void setStatus(String status) { this.status = status; }
-
-        public String getRole() { return role; }
-        public void setRole(String role) { this.role = role; }
-
-        public List<String> getProjectIds() { return projectIds; }
-        public void setProjectIds(List<String> projectIds) { this.projectIds = projectIds; }
-    }
 }

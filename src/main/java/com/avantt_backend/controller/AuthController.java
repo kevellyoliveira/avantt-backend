@@ -197,6 +197,25 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/alterar-senha")
+    @Operation(summary = "Alterar senha do usuário autenticado")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> changePassword(
+            @jakarta.validation.Valid
+            @org.springframework.web.bind.annotation.RequestBody
+            PasswordChangeRequestDTO req,
+            HttpServletRequest request) {
+
+        String authorization = request.getHeader("Authorization");
+        String token = authorization == null ? null : authorization.trim();
+        if (token != null && token.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            token = token.substring(7).trim();
+        }
+
+        authService.changePassword(token, req.getSenhaAtual(), req.getNovaSenha());
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/password-reset/request")
     @Operation(summary = "Solicitar redefinição de senha")
     @ApiResponses(value = {

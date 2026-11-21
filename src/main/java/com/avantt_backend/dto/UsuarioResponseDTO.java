@@ -14,6 +14,8 @@ public class UsuarioResponseDTO {
     private List<String> projects;
     private int workload;
     private String email;
+    private String cpf;
+    private String phone;
     private Integer organizacaoId;
 
     public UsuarioResponseDTO() {}
@@ -88,6 +90,22 @@ public class UsuarioResponseDTO {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getCpf() {
+        return cpf;
+    }
+
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
     public Integer getOrganizacaoId() {

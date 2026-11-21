@@ -44,9 +44,21 @@ class StatusUtilsTest {
         assertEquals("planejada", StatusUtils.normalizeTaskStatus("to do"));
         assertEquals("planejada", StatusUtils.normalizeTaskStatus("TODO"));
         assertEquals("em andamento", StatusUtils.normalizeTaskStatus("in progress"));
+        assertEquals("pausada", StatusUtils.normalizeTaskStatus("Pausada"));
+        assertEquals("cancelada", StatusUtils.normalizeTaskStatus("Cancelada"));
         assertEquals("concluída", StatusUtils.normalizeTaskStatus("done"));
         // fallback returns lowercased trimmed
         assertEquals("custom", StatusUtils.normalizeTaskStatus("  CuStOm  "));
+    }
+
+    @Test
+    void isValidTaskStatus_rejectsRemovedLifecycleStatuses() {
+        assertTrue(StatusUtils.isValidTaskStatus("Planejada"));
+        assertTrue(StatusUtils.isValidTaskStatus("Em andamento"));
+        assertTrue(StatusUtils.isValidTaskStatus("Concluída"));
+        assertTrue(StatusUtils.isValidTaskStatus("Bloqueada"));
+        assertFalse(StatusUtils.isValidTaskStatus("Pausada"));
+        assertFalse(StatusUtils.isValidTaskStatus("Cancelada"));
     }
 
     @Test

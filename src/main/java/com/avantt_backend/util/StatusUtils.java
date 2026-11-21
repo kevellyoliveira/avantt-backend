@@ -34,16 +34,24 @@ public final class StatusUtils {
         return t.substring(0,1).toUpperCase() + (t.length() > 1 ? t.substring(1) : "");
     }
 
-    // Normalize task status to frontend values: "planejada", "em andamento", "concluída"
+    // Normalize task status to the canonical labels used by the frontend.
     public static String normalizeTaskStatus(String raw) {
         if (raw == null) return null;
         String s = raw.trim().toLowerCase();
         if (s.isEmpty()) return null;
         if (s.contains("to do") || s.contains("todo") || s.contains("planej")) return "planejada";
         if (s.contains("in progress") || s.contains("inprogress") || s.contains("andam")) return "em andamento";
+        if (s.contains("bloque") || s.contains("block")) return "bloqueada";
         if (s.contains("done") || s.contains("concl")) return "concluída";
-        // fallback: return lowercased
         return s;
+    }
+
+    public static boolean isValidTaskStatus(String raw) {
+        String normalized = normalizeTaskStatus(raw);
+        return "planejada".equals(normalized)
+                || "em andamento".equals(normalized)
+                || "concluída".equals(normalized)
+                || "bloqueada".equals(normalized);
     }
 
     public static String normalizePriority(String raw) {

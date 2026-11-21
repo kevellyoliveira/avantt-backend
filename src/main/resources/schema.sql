@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS sprint (
     nome VARCHAR(150) NOT NULL,
     objetivo TEXT,
 
-    status_id INT NULL,
+    status ENUM('Planejada', 'Em andamento', 'Finalizada') NOT NULL DEFAULT 'Planejada',
     progresso INT DEFAULT 0,
     data_inicio DATE,
     data_fim DATE,
@@ -414,8 +414,7 @@ CREATE INDEX IF NOT EXISTS idx_tarefa_sprint ON tarefa(sprint_id);
 CREATE INDEX IF NOT EXISTS idx_tarefa_datafim ON tarefa(data_fim);
 CREATE INDEX IF NOT EXISTS idx_tarefa_usuario_usuario ON tarefa_usuario(usuario_id);
 
--- Note: projeto.status_id and sprint.status_id foreign keys require the `status` table
+-- Note: projeto.status_id foreign key requires the `status` table
 ALTER TABLE IF EXISTS projeto ADD CONSTRAINT fk_projeto_status FOREIGN KEY (status_id) REFERENCES `status`(id) ON UPDATE CASCADE ON DELETE SET NULL;
-ALTER TABLE IF EXISTS sprint ADD CONSTRAINT fk_sprint_status FOREIGN KEY (status_id) REFERENCES `status`(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 -- End of schema

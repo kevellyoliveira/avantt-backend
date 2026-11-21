@@ -1,8 +1,6 @@
 package com.avantt_backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.validation.constraints.Future;
-import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
@@ -11,18 +9,19 @@ import java.util.List;
 public class SprintRequestDTO {
     private String name;
     private Integer projectId;
-    @jakarta.validation.constraints.NotNull(message = "projectId é obrigatório")
+
+    @NotNull(message = "statusId é obrigatório")
+    private Integer statusId;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    @FutureOrPresent(message = "Data de início deve ser uma data futura ou presente")
     @NotNull(message = "Data de início é obrigatória")
     private LocalDate startDate;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    @Future(message = "Data de fim deve ser uma data futura")
     @NotNull(message = "Data de fim é obrigatória")
     private LocalDate endDate;
 
+    private String goal;
     private Integer daysDelayed;
     private Integer progress;
     private Integer totalTasks;
@@ -31,13 +30,16 @@ public class SprintRequestDTO {
     private List<Integer> team;
     private List<Integer> addTeam;
     private List<Integer> removeTeam;
-    @NotNull(message = "statusId é obrigatório")
-    private Integer statusId;
-
     public SprintRequestDTO() {}
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public String getGoal() { return goal; }
+    public void setGoal(String goal) { this.goal = goal; }
+
+    public Integer getStatusId() { return statusId; }
+    public void setStatusId(Integer statusId) { this.statusId = statusId; }
 
     public Integer getProjectId() { return projectId; }
     public void setProjectId(Integer projectId) { this.projectId = projectId; }
@@ -72,6 +74,4 @@ public class SprintRequestDTO {
     public List<Integer> getRemoveTeam() { return removeTeam; }
     public void setRemoveTeam(List<Integer> removeTeam) { this.removeTeam = removeTeam; }
 
-    public Integer getStatusId() { return statusId; }
-    public void setStatusId(Integer statusId) { this.statusId = statusId; }
 }

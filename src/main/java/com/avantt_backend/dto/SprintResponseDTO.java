@@ -6,7 +6,10 @@ import java.util.List;
 public class SprintResponseDTO {
     private Integer id;
     private String name;
+    private String goal;
+    private String status;
     private String project;
+    private Integer projectId;
     @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate startDate;
     @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
@@ -17,8 +20,7 @@ public class SprintResponseDTO {
     private int doneTasks;
     private int blockedTasks;
     private List<String> team;
-    private Integer statusId;
-    private String statusName;
+    private List<Integer> teamIds;
 
     public SprintResponseDTO() {}
 
@@ -29,8 +31,17 @@ public class SprintResponseDTO {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
+    public String getGoal() { return goal; }
+    public void setGoal(String goal) { this.goal = goal; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
     public String getProject() { return project; }
     public void setProject(String project) { this.project = project; }
+
+    public Integer getProjectId() { return projectId; }
+    public void setProjectId(Integer projectId) { this.projectId = projectId; }
 
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
@@ -56,9 +67,6 @@ public class SprintResponseDTO {
     public List<String> getTeam() { return team; }
     public void setTeam(List<String> team) { this.team = team; }
 
-    public Integer getStatusId() { return statusId; }
-    public void setStatusId(Integer statusId) { this.statusId = statusId; }
-
-    public String getStatusName() { return statusName; }
-    public void setStatusName(String statusName) { this.statusName = statusName; }
+    public List<Integer> getTeamIds() { return teamIds; }
+    public void setTeamIds(List<Integer> teamIds) { this.teamIds = teamIds; }
 }

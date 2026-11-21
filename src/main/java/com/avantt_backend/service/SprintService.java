@@ -4,7 +4,6 @@ package com.avantt_backend.service;
 import com.avantt_backend.dto.SprintRequestDTO;
 import com.avantt_backend.dto.SprintResponseDTO;
 import com.avantt_backend.entity.Sprint;
-import com.avantt_backend.entity.ProjetoUsuario;
 import com.avantt_backend.entity.Tarefa;
 import com.avantt_backend.exception.ApiException;
 import com.avantt_backend.exception.ResourceNotFoundException;
@@ -26,14 +25,14 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class SprintService {
 
     private static final Logger log = LoggerFactory.getLogger(SprintService.class);
-
     private final SprintRepository sprintRepository;
     private final ProjetoRepository projetoRepository;
     private final TarefaRepository tarefaRepository;
@@ -41,6 +40,27 @@ public class SprintService {
     private final UsuarioRepository usuarioRepository;
     private final SprintUsuarioRepository sprintUsuarioRepository;
     private final StatusTarefaRepository statusTarefaRepository;
+
+    private String validatedSprintStatus(Integer statusId) {
+        if (statusId == null) {
+            throw new ApiException("statusId é obrigatório");
+        }
+
+        var status = statusTarefaRepository.findById(statusId)
+                .orElseThrow(() -> new ApiException("Status de sprint não encontrado: id=" + statusId));
+        return validatedSprintStatus(status.getNome());
+    }
+
+    private String validatedSprintStatus(String status) {
+        String normalized = status == null ? "" : status.trim().toLowerCase(Locale.ROOT);
+
+        return switch (normalized) {
+            case "planejada" -> "Planejada";
+            case "em andamento" -> "Em andamento";
+            case "concluída", "concluida", "finalizada" -> "Finalizada";
+            default -> throw new ApiException("Status de sprint inválido: " + status);
+        };
+    }
 
     public SprintService(
             SprintRepository sprintRepository,
@@ -412,6 +432,7 @@ public class SprintService {
         }
 
         Sprint sprint = sprintOptional.get();
+        String sprintStatus = validatedSprintStatus(dto.getStatusId());
 
         if (dto.getProjectId() != null
                 && !dto.getProjectId().equals(sprint.getProjetoId())) {
@@ -421,6 +442,10 @@ public class SprintService {
         if (dto.getName() != null) {
             sprint.setNome(dto.getName());
         }
+        if (dto.getGoal() != null) {
+            sprint.setObjetivo(dto.getGoal());
+        }
+        sprint.setStatus(sprintStatus);
 
         var projetoOptional = projetoRepository.findById(sprint.getProjetoId());
 
@@ -441,7 +466,10 @@ public class SprintService {
                 ? sprint.getDataFim()
                 : dto.getEndDate();
 
-        if (newStart != null
+        boolean periodChanged = !java.util.Objects.equals(newStart, sprint.getDataInicio())
+                || !java.util.Objects.equals(newEnd, sprint.getDataFim());
+
+        if (periodChanged && newStart != null
                 && projeto.getStartDate() != null
                 && newStart.isBefore(projeto.getStartDate())) {
             throw new ApiException(
@@ -449,7 +477,7 @@ public class SprintService {
             );
         }
 
-        if (newStart != null
+        if (periodChanged && newStart != null
                 && newEnd != null
                 && newEnd.isBefore(newStart.plusDays(15))) {
             throw new ApiException(
@@ -457,7 +485,7 @@ public class SprintService {
             );
         }
 
-        if (newEnd != null
+        if (periodChanged && newEnd != null
                 && projeto.getEndDate() != null
                 && newEnd.isAfter(projeto.getEndDate())) {
             throw new ApiException(
@@ -468,23 +496,21 @@ public class SprintService {
         sprint.setDataInicio(newStart);
         sprint.setDataFim(newEnd);
 
-        if (dto.getStatusId() != null) {
-
-            var statusOptional = statusTarefaRepository.findById(dto.getStatusId());
-
-            if (statusOptional.isEmpty()) {
-                throw new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "Status não encontrado: id=" + dto.getStatusId()
-                );
-            }
-
-            sprint.setStatusId(dto.getStatusId());
-        }
-
         Sprint saved = sprintRepository.save(sprint);
 
-        if (dto.getAddTeam() != null && !dto.getAddTeam().isEmpty()) {
+        List<Integer> addTeam = dto.getAddTeam();
+        List<Integer> removeTeam = dto.getRemoveTeam();
+        if (dto.getTeam() != null) {
+            Set<Integer> currentTeam = sprintUsuarioRepository.findByIdSprintId(saved.getId())
+                    .stream()
+                    .map(item -> item.getId().getUsuarioId())
+                    .collect(java.util.stream.Collectors.toSet());
+            Set<Integer> desiredTeam = new java.util.HashSet<>(dto.getTeam());
+            addTeam = desiredTeam.stream().filter(id -> !currentTeam.contains(id)).collect(Collectors.toList());
+            removeTeam = currentTeam.stream().filter(id -> !desiredTeam.contains(id)).collect(Collectors.toList());
+        }
+
+        if (addTeam != null && !addTeam.isEmpty()) {
 
             var projetoUsuarios =
                     projetoUsuarioRepository.findByIdProjetoId(sprint.getProjetoId());
@@ -495,7 +521,7 @@ public class SprintService {
                 projectMemberIds.add(projetoUsuario.getId().getUsuarioId());
             }
 
-            for (Integer usuarioId : dto.getAddTeam()) {
+            for (Integer usuarioId : addTeam) {
 
                 if (usuarioId == null) {
                     throw new ApiException("Usuário inválido na lista de team");
@@ -525,9 +551,9 @@ public class SprintService {
             }
         }
 
-        if (dto.getRemoveTeam() != null && !dto.getRemoveTeam().isEmpty()) {
+        if (removeTeam != null && !removeTeam.isEmpty()) {
 
-            for (Integer usuarioId : dto.getRemoveTeam()) {
+            for (Integer usuarioId : removeTeam) {
 
                 if (usuarioId == null) {
                     continue;
@@ -562,7 +588,10 @@ public class SprintService {
 
         response.setId(saved.getId());
         response.setName(saved.getNome());
+        response.setGoal(saved.getObjetivo());
+        response.setStatus(validatedSprintStatus(saved.getStatus()));
         response.setProject(projeto.getName());
+        response.setProjectId(projeto.getId());
         response.setStartDate(saved.getDataInicio());
         response.setEndDate(saved.getDataFim());
 
@@ -602,116 +631,27 @@ public class SprintService {
         }
 
         response.setTeam(names);
-
-        response.setStatusId(saved.getStatusId());
-
-        if (saved.getStatusId() != null) {
-            statusTarefaRepository.findById(saved.getStatusId())
-                    .ifPresent(status -> response.setStatusName(status.getNome()));
-        }
+        response.setTeamIds(sprintUsuarios.stream()
+                .map(item -> item.getId().getUsuarioId())
+                .collect(Collectors.toList()));
 
         return response;
     }
 
     @Transactional
     public SprintResponseDTO updateStatus(Integer sprintId, Integer statusId) {
-
-        var sprintOptional = sprintRepository.findById(sprintId);
-
-        if (sprintOptional.isEmpty()) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.NOT_FOUND,
-                    "Sprint não encontrada: id=" + sprintId
-            );
-        }
-
-        if (statusId == null) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.BAD_REQUEST,
-                    "Status inválido: id=null"
-            );
-        }
-
-        var statusOptional = statusTarefaRepository.findById(statusId);
-
-        if (statusOptional.isEmpty()) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.NOT_FOUND,
-                    "Status não encontrado: id=" + statusId
-            );
-        }
-
-        Sprint sprint = sprintOptional.get();
-        sprint.setStatusId(statusId);
-
-        Sprint saved = sprintRepository.save(sprint);
-
-        ProgressInfo info = recalculateAndPersistProgress(saved.getId());
-
-        SprintResponseDTO response = new SprintResponseDTO();
-
-        response.setId(saved.getId());
-        response.setName(saved.getNome());
-
-        AtomicReference<String> projectName = new AtomicReference<>();
-
-        if (saved.getProjetoId() != null) {
-            projetoRepository.findById(saved.getProjetoId())
-                    .ifPresent(projeto -> projectName.set(projeto.getName()));
-        }
-
-        response.setProject(projectName.get());
-        response.setStartDate(saved.getDataInicio());
-        response.setEndDate(saved.getDataFim());
-
-        int daysDelayed = 0;
-
-        if (saved.getDataFim() != null) {
-
-            LocalDate today = LocalDate.now();
-
-            if (today.isAfter(saved.getDataFim())) {
-                daysDelayed = (int) ChronoUnit.DAYS.between(
-                        saved.getDataFim(),
-                        today
-                );
-            }
-        }
-
-        response.setDaysDelayed(daysDelayed);
-        response.setProgress(info.progress);
-        response.setTotalTasks(info.total);
-        response.setDoneTasks(info.done);
-        response.setBlockedTasks(0);
-
-        var sprintUsuarios =
-                sprintUsuarioRepository.findByIdSprintId(saved.getId());
-
-        var names = new ArrayList<String>();
-
-        for (var sprintUsuario : sprintUsuarios) {
-
-            Integer usuarioId = sprintUsuario.getId().getUsuarioId();
-
-            usuarioRepository.findById(usuarioId)
-                    .ifPresent(usuario -> names.add(usuario.getNome()));
-        }
-
-        response.setTeam(names);
-
-        response.setStatusId(saved.getStatusId());
-
-        if (saved.getStatusId() != null) {
-            statusTarefaRepository.findById(saved.getStatusId())
-                    .ifPresent(status -> response.setStatusName(status.getNome()));
-        }
-
-        return response;
+        SprintRequestDTO request = new SprintRequestDTO();
+        request.setStatusId(statusId);
+        return update(sprintId, request);
     }
 
     @Transactional
     public SprintResponseDTO create(SprintRequestDTO dto) {
+        String sprintStatus = validatedSprintStatus(dto.getStatusId());
 
+        if (dto.getProjectId() == null) {
+            throw new ApiException("Projeto é obrigatório");
+        }
         var projetoOptional = projetoRepository.findById(dto.getProjectId());
 
         if (projetoOptional.isEmpty()) {
@@ -752,26 +692,13 @@ public class SprintService {
 
         sprint.setProjetoId(projeto.getId());
         sprint.setNome(dto.getName());
+        sprint.setObjetivo(dto.getGoal());
+        sprint.setStatus(sprintStatus);
         sprint.setDataInicio(dto.getStartDate());
         sprint.setDataFim(dto.getEndDate());
 
         // Inicializa o progresso para evitar NULL na coluna do banco.
         sprint.setProgresso(0);
-
-        if (dto.getStatusId() == null) {
-            throw new ApiException("O status da sprint é obrigatório");
-        }
-
-        var statusOptional = statusTarefaRepository.findById(dto.getStatusId());
-
-        if (statusOptional.isEmpty()) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.NOT_FOUND,
-                    "Status não encontrado: id=" + dto.getStatusId()
-            );
-        }
-
-        sprint.setStatusId(dto.getStatusId());
 
         Sprint saved = sprintRepository.save(sprint);
 
@@ -779,7 +706,10 @@ public class SprintService {
 
         response.setId(saved.getId());
         response.setName(saved.getNome());
+        response.setGoal(saved.getObjetivo());
+        response.setStatus(validatedSprintStatus(saved.getStatus()));
         response.setProject(projeto.getName());
+        response.setProjectId(projeto.getId());
         response.setStartDate(saved.getDataInicio());
         response.setEndDate(saved.getDataFim());
 
@@ -847,7 +777,7 @@ public class SprintService {
 
         } else {
 
-            response.setTeam(loadTeamForProject(projeto.getId()));
+            response.setTeam(new ArrayList<>());
         }
 
         if (dto.getTeam() != null && !dto.getTeam().isEmpty()) {
@@ -891,7 +821,22 @@ public class SprintService {
             }
         }
 
+        var savedSprintUsers = sprintUsuarioRepository.findByIdSprintId(saved.getId());
+        response.setTeamIds(savedSprintUsers.stream()
+                .map(item -> item.getId().getUsuarioId())
+                .collect(Collectors.toList()));
+
         return response;
+    }
+
+    public List<SprintResponseDTO> listAll(String projetoId, Integer organizacaoId) {
+        if (organizacaoId == null) return listAll(projetoId);
+        return listAll(projetoId).stream()
+                .filter(sprint -> sprint.getProject() != null
+                        && projetoRepository.findByName(sprint.getProject())
+                        .map(project -> organizacaoId.equals(project.getOrganizacaoId()))
+                        .orElse(false))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     public List<SprintResponseDTO> listAll(String projetoId) {
@@ -939,6 +884,9 @@ public class SprintService {
 
             response.setId(sprint.getId());
             response.setName(sprint.getNome());
+            response.setGoal(sprint.getObjetivo());
+            response.setStatus(validatedSprintStatus(sprint.getStatus()));
+            response.setProjectId(sprint.getProjetoId());
 
             String projectName = null;
 
@@ -954,13 +902,6 @@ public class SprintService {
             response.setProject(projectName);
             response.setStartDate(sprint.getDataInicio());
             response.setEndDate(sprint.getDataFim());
-
-            response.setStatusId(sprint.getStatusId());
-
-            if (sprint.getStatusId() != null) {
-                statusTarefaRepository.findById(sprint.getStatusId())
-                        .ifPresent(status -> response.setStatusName(status.getNome()));
-            }
 
             ProgressInfo info = sprint.getId() == null
                     ? new ProgressInfo(0, 0, 0)
@@ -994,33 +935,40 @@ public class SprintService {
                 if (sprintUsuarios != null && !sprintUsuarios.isEmpty()) {
 
                     var names = new ArrayList<String>();
+                    var ids = new ArrayList<Integer>();
 
                     for (var sprintUsuario : sprintUsuarios) {
 
                         Integer usuarioId = sprintUsuario.getId().getUsuarioId();
+                        ids.add(usuarioId);
 
                         usuarioRepository.findById(usuarioId)
                                 .ifPresent(usuario -> names.add(usuario.getNome()));
                     }
 
                     response.setTeam(names);
+                    response.setTeamIds(ids);
 
                 } else if (sprint.getProjetoId() != null) {
 
-                    response.setTeam(loadTeamForProject(sprint.getProjetoId()));
+                    response.setTeam(java.util.Collections.emptyList());
+                    response.setTeamIds(new ArrayList<>());
 
                 } else {
 
                     response.setTeam(java.util.Collections.emptyList());
+                    response.setTeamIds(new ArrayList<>());
                 }
 
             } else if (sprint.getProjetoId() != null) {
 
-                response.setTeam(loadTeamForProject(sprint.getProjetoId()));
+                response.setTeam(java.util.Collections.emptyList());
+                response.setTeamIds(new ArrayList<>());
 
             } else {
 
                 response.setTeam(java.util.Collections.emptyList());
+                response.setTeamIds(new ArrayList<>());
             }
 
             return response;
@@ -1028,21 +976,4 @@ public class SprintService {
         }).collect(Collectors.toList());
     }
 
-    private List<String> loadTeamForProject(Integer projetoId) {
-
-        var projetoUsuarios =
-                projetoUsuarioRepository.findByIdProjetoId(projetoId);
-
-        var names = new ArrayList<String>();
-
-        for (ProjetoUsuario projetoUsuario : projetoUsuarios) {
-
-            Integer usuarioId = projetoUsuario.getId().getUsuarioId();
-
-            usuarioRepository.findById(usuarioId)
-                    .ifPresent(usuario -> names.add(usuario.getNome()));
-        }
-
-        return names;
-    }
 }

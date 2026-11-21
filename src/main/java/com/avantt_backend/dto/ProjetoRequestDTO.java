@@ -2,6 +2,7 @@
 package com.avantt_backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
@@ -55,7 +56,9 @@ public class ProjetoRequestDTO {
     private List<String> risks;
 
     // Relacionamentos
+    @JsonAlias("clientId")
     private Integer clienteId;
+    private boolean clienteIdProvided;
 
     private Integer organizacaoId;
 
@@ -188,6 +191,11 @@ public class ProjetoRequestDTO {
 
     public void setClienteId(Integer clienteId) {
         this.clienteId = clienteId;
+        this.clienteIdProvided = true;
+    }
+
+    public boolean isClienteIdProvided() {
+        return clienteIdProvided;
     }
 
     public Integer getOrganizacaoId() {

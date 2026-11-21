@@ -20,9 +20,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class ConviteService {
+    private static final Logger logger = LoggerFactory.getLogger(ConviteService.class);
 
     private final UsuarioRepository usuarioRepository;
     private final EmailService emailService;
@@ -77,6 +80,11 @@ public class ConviteService {
 
         String codigo = gerarCodigo();
         String codigoHash = gerarHash(codigo);
+        logger.warn(
+                "Código temporário de primeiro acesso para {}: {}",
+                usuario.getEmail(),
+                codigo
+        );
 
         usuario.setConviteTokenHash(codigoHash);
         usuario.setConviteTokenExpiry(agora.plusMinutes(15));
@@ -120,7 +128,7 @@ public class ConviteService {
                 || req.getPassword() == null
                 || req.getPassword().isEmpty()
                 || req.getCodigo() == null
-                || !req.getCodigo().trim().matches("\\d{6}")) {
+                || !req.getCodigo().trim().matches("[A-Za-z0-9]{6}")) {
 
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,

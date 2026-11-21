@@ -14,6 +14,12 @@ public class Organizacao {
     @Column(name = "nome_fantasia", nullable = false)
     private String nomeFantasia;
 
+    @Column(name = "razao_social", length = 200)
+    private String razaoSocial;
+
+    @Column(name = "telefone", length = 20)
+    private String telefone;
+
     @Column(name = "cnpj", length = 20, unique = true)
     private String cnpj;
 
@@ -34,6 +40,12 @@ public class Organizacao {
 
     public String getNomeFantasia() { return nomeFantasia; }
     public void setNomeFantasia(String nomeFantasia) { this.nomeFantasia = nomeFantasia; }
+
+    public String getRazaoSocial() { return razaoSocial; }
+    public void setRazaoSocial(String razaoSocial) { this.razaoSocial = razaoSocial; }
+
+    public String getTelefone() { return telefone; }
+    public void setTelefone(String telefone) { this.telefone = telefone; }
 
     public String getCnpj() { return cnpj; }
     public void setCnpj(String cnpj) { this.cnpj = cnpj; }

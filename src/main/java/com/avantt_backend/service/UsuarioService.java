@@ -68,6 +68,12 @@ public class UsuarioService {
         entity.setNome(dto.getName());
         entity.setEmail(dto.getEmail());
         entity.setCargo(dto.getRole());
+        if (dto.getCpf() != null) {
+            entity.setCpf(dto.getCpf());
+        }
+        if (dto.getPhone() != null) {
+            entity.setTelefone(dto.getPhone());
+        }
 
         if (!existenceRepository.existsPerfilById(dto.getPerfilId())) {
             throw new ResponseStatusException(
@@ -117,6 +123,8 @@ public class UsuarioService {
                 dto.getWorkload() == null
                         ? 0
                         : dto.getWorkload());
+        f.setCpf(saved.getCpf());
+        f.setPhone(saved.getTelefone());
 
         return f;
     }
@@ -146,6 +154,12 @@ public class UsuarioService {
 
         if (dto.getRole() != null) {
             u.setCargo(dto.getRole());
+        }
+        if (dto.getCpf() != null) {
+            u.setCpf(dto.getCpf().isBlank() ? null : dto.getCpf().trim());
+        }
+        if (dto.getPhone() != null) {
+            u.setTelefone(dto.getPhone().isBlank() ? null : dto.getPhone().trim());
         }
 
         // Outros campos do frontend não são persistidos nesta entidade.
@@ -187,12 +201,104 @@ public class UsuarioService {
                 dto.getWorkload() == null
                         ? 0
                         : dto.getWorkload());
+        f.setCpf(saved.getCpf());
+        f.setPhone(saved.getTelefone());
 
         return f;
     }
 
     public java.util.List<UsuarioResponseDTO> listAll() {
         return listAll(null);
+    }
+
+    public java.util.List<UsuarioResponseDTO> listAvailable() {
+        String sql =
+                "SELECT u.id, u.nome, u.email, u.cargo "
+                        + "FROM usuario u "
+                        + "LEFT JOIN projeto_usuario pu ON pu.usuario_id = u.id "
+                        + "WHERE pu.usuario_id IS NULL "
+                        + "AND u.is_ativo = TRUE "
+                        + "AND u.primeiro_acesso_validado = FALSE "
+                        + "ORDER BY u.nome";
+
+        var q = em.createNativeQuery(sql);
+
+        @SuppressWarnings("unchecked")
+        java.util.List<Object[]> rows = q.getResultList();
+        java.util.List<UsuarioResponseDTO> available =
+                new java.util.ArrayList<>();
+
+        for (Object[] row : rows) {
+            Integer uid = row[0] == null ? null : ((Number) row[0]).intValue();
+            if (uid == null) continue;
+
+            UsuarioResponseDTO u = new UsuarioResponseDTO();
+            u.setId(String.valueOf(uid));
+            u.setName(row[1] == null ? "" : row[1].toString());
+            u.setEmail(row[2] == null ? "" : row[2].toString());
+            u.setRole(row[3] == null ? "Colaborador" : row[3].toString());
+            u.setAvatar(generateInitials(u.getName()));
+            u.setColor("#4B7BF5");
+            u.setTasks(new TasksDTO(0, 0, 0, 0));
+            u.setProjects(new java.util.ArrayList<>());
+            u.setWorkload(0);
+            available.add(u);
+        }
+
+        return available;
+    }
+
+    public java.util.List<UsuarioResponseDTO> listAll(
+            Integer projetoId,
+            Integer organizacaoId) {
+        if (organizacaoId == null) return listAll(projetoId);
+
+        java.util.Map<Integer, UsuarioResponseDTO> map =
+                new java.util.LinkedHashMap<>();
+        String sql =
+                "SELECT u.id AS usuario_id, u.nome AS usuario_nome, "
+                        + "u.email, u.cargo, u.is_ativo, "
+                        + "p.id AS projeto_id, p.nome AS projeto_nome "
+                        + "FROM usuario u "
+                        + "LEFT JOIN projeto_usuario pu ON pu.usuario_id = u.id "
+                        + "LEFT JOIN projeto p ON p.id = pu.projeto_id "
+                        + "WHERE u.is_ativo = TRUE AND u.organizacao_id = :organizacaoId "
+                        + (projetoId == null ? "" : "AND pu.projeto_id = :projetoId ")
+                        + "ORDER BY u.nome, p.nome";
+
+        var q = em.createNativeQuery(sql);
+        q.setParameter("organizacaoId", organizacaoId);
+        if (projetoId != null) q.setParameter("projetoId", projetoId);
+
+        @SuppressWarnings("unchecked")
+        java.util.List<Object[]> rows = q.getResultList();
+        for (Object[] row : rows) {
+            Integer uid = row[0] == null ? null : ((Number) row[0]).intValue();
+            if (uid == null) continue;
+            String nome = row[1] == null ? "" : row[1].toString();
+            String email = row[2] == null ? "" : row[2].toString();
+            String cargo = row[3] == null ? "" : row[3].toString();
+            String projetoNome = row[6] == null ? null : row[6].toString();
+
+            UsuarioResponseDTO u = map.computeIfAbsent(uid, id -> {
+                UsuarioResponseDTO member = new UsuarioResponseDTO();
+                member.setId(String.valueOf(id));
+                member.setName(nome);
+                member.setEmail(email);
+                member.setRole(cargo);
+                member.setAvatar(generateInitials(nome));
+                member.setColor("#4B7BF5");
+                member.setTasks(new TasksDTO(0, 0, 0, 0));
+                member.setProjects(new java.util.ArrayList<>());
+                member.setWorkload(0);
+                return member;
+            });
+            if (projetoNome != null && !projetoNome.isBlank()
+                    && !u.getProjects().contains(projetoNome)) {
+                u.getProjects().add(projetoNome);
+            }
+        }
+        return new java.util.ArrayList<>(map.values());
     }
 
     public java.util.List<UsuarioResponseDTO> listAll(Integer projetoId) {

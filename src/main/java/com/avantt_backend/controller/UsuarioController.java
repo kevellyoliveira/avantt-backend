@@ -166,16 +166,44 @@ public class UsuarioController {
                     description = "Erro interno do servidor",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @GetMapping(path = USUARIOS + "/disponiveis")
+    public ResponseEntity<?> listUsuariosDisponiveis() {
+        List<UsuarioResponseDTO> list = usuarioService.listAvailable();
+        return ResponseEntity.ok(list);
+    }
+
     @GetMapping(
             path = USUARIOS,
             produces = "application/json")
     public ResponseEntity<?> listUsuarios(
             @RequestParam(value = "projetoId", required = false)
-            Integer projetoId) {
+            Integer projetoId,
+            HttpServletRequest httpRequest) {
 
-        List<UsuarioResponseDTO> list =
-                usuarioService.listAll(projetoId);
+        Integer organizacaoId = getOrganizacaoId(httpRequest);
+        List<UsuarioResponseDTO> list = organizacaoId == null
+                ? usuarioService.listAll(projetoId)
+                : usuarioService.listAll(projetoId, organizacaoId);
 
+        return ResponseEntity.ok(list);
+    }
+
+    private Integer getOrganizacaoId(HttpServletRequest request) {
+        if (request == null) return null;
+        String authorization = request.getHeader("Authorization");
+        if (authorization == null || authorization.isBlank()) return null;
+        String token = authorization.trim();
+        if (token.regionMatches(true, 0, "Bearer ", 0, 7)) token = token.substring(7).trim();
+        if (token.isBlank()) return null;
+        try {
+            return authService.obterUsuarioAutenticado(token).getOrganizacaoId();
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    public ResponseEntity<?> listUsuarios(Integer projetoId) {
+        List<UsuarioResponseDTO> list = usuarioService.listAll(projetoId);
         return ResponseEntity.ok(list);
     }
 

@@ -69,7 +69,7 @@ public class AuthService {
 
         u.setNome(req.getName());
         u.setEmail(email);
-        u.setCargo(req.getRole());
+        u.setCargo(req.getRole() == null ? "Colaborador" : req.getRole());
         u.setOrganizacaoId(1);
         u.setSenha(passwordEncoder.encode(req.getPassword()));
 
@@ -132,7 +132,7 @@ public class AuthService {
 
         u.setNome(req.getName());
         u.setEmail(email);
-        u.setCargo(req.getRole());
+        u.setCargo(req.getRole() == null ? "Administrador" : req.getRole());
         u.setSenha(passwordEncoder.encode(req.getPassword()));
         u.setOrganizacaoId(organizacaoId);
 
@@ -248,6 +248,48 @@ public class AuthService {
             return null;
         }
 
+        boolean perfilGerencial = false;
+        boolean perfilDesenvolvedor = false;
+        if (u.getPerfilId() != null) {
+            perfilGerencial = perfilRepository.findById(u.getPerfilId())
+                    .map(perfil -> {
+                        String nome = perfil.getNome();
+                        return nome != null && (
+                                nome.toLowerCase().contains("admin")
+                                        || nome.toLowerCase().contains("gestor")
+                                        || nome.toLowerCase().contains("gerente"));
+                    })
+                    .orElse(false);
+            perfilDesenvolvedor = perfilRepository.findById(u.getPerfilId())
+                    .map(perfil -> {
+                        String nome = perfil.getNome();
+                        return nome != null && (
+                                nome.toLowerCase().contains("colaborador")
+                                        || nome.toLowerCase().contains("desenvol"));
+                    })
+                    .orElse(false);
+        }
+
+        String cargo = u.getCargo();
+        boolean cargoGerencial = cargo != null && (
+                cargo.toLowerCase().contains("admin")
+                        || cargo.toLowerCase().contains("gestor")
+                        || cargo.toLowerCase().contains("gerente"));
+        boolean cargoDesenvolvedor = cargo != null && (
+                cargo.toLowerCase().contains("colaborador")
+                        || cargo.toLowerCase().contains("desenvol"));
+
+        if (!Boolean.TRUE.equals(u.getPrimeiroAcessoValidado())
+                && (perfilGerencial || cargoGerencial)) {
+            u.setPrimeiroAcessoValidado(true);
+        }
+
+        if (!Boolean.TRUE.equals(u.getPrimeiroAcessoValidado())
+                && !perfilDesenvolvedor
+                && !cargoDesenvolvedor) {
+            u.setPrimeiroAcessoValidado(true);
+        }
+
         if (!Boolean.TRUE.equals(u.getPrimeiroAcessoValidado())) {
 
             // Garante que uma sessão antiga não continue válida.
@@ -292,6 +334,25 @@ public class AuthService {
         usuarioRepository.save(u);
 
         return true;
+    }
+
+    @Transactional
+    public void changePassword(
+            String token,
+            String currentPassword,
+            String newPassword) {
+
+        Usuario usuario = obterUsuarioAutenticado(token);
+
+        if (usuario.getSenha() == null
+                || !passwordEncoder.matches(currentPassword, usuario.getSenha())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "A senha atual está incorreta.");
+        }
+
+        usuario.setSenha(passwordEncoder.encode(newPassword));
+        usuarioRepository.save(usuario);
     }
 
     @Transactional
@@ -357,6 +418,8 @@ public class AuthService {
         dto.setColor("#2563eb");
 
         dto.setOrganizacaoId(usuario.getOrganizacaoId());
+        dto.setCpf(usuario.getCpf());
+        dto.setPhone(usuario.getTelefone());
 
         return dto;
     }

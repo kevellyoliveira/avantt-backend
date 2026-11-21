@@ -277,4 +277,50 @@ class UsuarioServiceTest {
         verify(usuarioRepository).existsByEmail("new@example.com");
         verify(usuarioRepository).save(existing);
     }
+
+    @Test
+    void update_profileFields_updatesAndReturnsCpfAndPhone() {
+        Usuario existing = new Usuario();
+        existing.setId(3);
+        existing.setNome("Ana");
+        existing.setEmail("ana@example.com");
+
+        when(usuarioRepository.findById(3)).thenReturn(Optional.of(existing));
+        when(usuarioRepository.save(existing)).thenReturn(existing);
+
+        UsuarioRequestDTO dto = new UsuarioRequestDTO();
+        dto.setCpf("123.456.789-00");
+        dto.setPhone("(11) 99999-1234");
+
+        UsuarioResponseDTO response = usuarioService.update(3, dto);
+
+        assertEquals("123.456.789-00", existing.getCpf());
+        assertEquals("(11) 99999-1234", existing.getTelefone());
+        assertEquals(existing.getCpf(), response.getCpf());
+        assertEquals(existing.getTelefone(), response.getPhone());
+    }
+
+    @Test
+    void update_profileFields_emptyValuesClearPersistedValues() {
+        Usuario existing = new Usuario();
+        existing.setId(4);
+        existing.setNome("Ana");
+        existing.setEmail("ana@example.com");
+        existing.setCpf("123.456.789-00");
+        existing.setTelefone("(11) 99999-1234");
+
+        when(usuarioRepository.findById(4)).thenReturn(Optional.of(existing));
+        when(usuarioRepository.save(existing)).thenReturn(existing);
+
+        UsuarioRequestDTO dto = new UsuarioRequestDTO();
+        dto.setCpf("");
+        dto.setPhone("");
+
+        UsuarioResponseDTO response = usuarioService.update(4, dto);
+
+        assertNull(existing.getCpf());
+        assertNull(existing.getTelefone());
+        assertNull(response.getCpf());
+        assertNull(response.getPhone());
+    }
 }

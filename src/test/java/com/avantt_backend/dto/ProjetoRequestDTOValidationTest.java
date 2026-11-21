@@ -1,5 +1,6 @@
 package com.avantt_backend.dto;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -102,5 +103,23 @@ class ProjetoRequestDTOValidationTest {
 
         assertTrue(hasStart, "A data inicial no passado deveria ser inválida");
         assertTrue(hasEnd, "A data final no passado deveria ser inválida");
+    }
+
+    @Test
+    void explicitNullClientIdIsDistinguishedFromOmittedClientId() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+
+        ProjetoRequestDTO explicitNull = mapper.readValue(
+                "{\"clienteId\":null}",
+                ProjetoRequestDTO.class
+        );
+        ProjetoRequestDTO omitted = mapper.readValue(
+                "{}",
+                ProjetoRequestDTO.class
+        );
+
+        assertTrue(explicitNull.isClienteIdProvided());
+        assertNull(explicitNull.getClienteId());
+        assertFalse(omitted.isClienteIdProvided());
     }
 }

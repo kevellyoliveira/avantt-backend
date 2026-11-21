@@ -213,6 +213,59 @@ class ProjetoServiceTest {
     }
 
     @Test
+    void update_explicitNullClientIdUnlinksClient() {
+        Projeto projeto = new Projeto();
+        projeto.setId(8);
+        projeto.setName("Projeto");
+        projeto.setOrganizacaoId(1);
+        projeto.setClienteId(4);
+        projeto.setStartDate(LocalDate.now());
+        projeto.setEndDate(LocalDate.now().plusDays(20));
+
+        ProjetoRequestDTO dto = new ProjetoRequestDTO();
+        dto.setClienteId(null);
+
+        when(projetoRepository.findByIdAndOrganizacaoId(8, 1))
+                .thenReturn(Optional.of(projeto));
+        when(projetoRepository.save(any(Projeto.class)))
+                .thenReturn(projeto);
+        when(sprintService.listAll("8")).thenReturn(List.of());
+        when(tarefaService.listAll("8", null, null)).thenReturn(List.of());
+        when(projetoUsuarioRepository.findByIdProjetoId(8)).thenReturn(List.of());
+        when(projetoMarcoRepository.findByProjeto_IdOrderByDateAsc(8)).thenReturn(List.of());
+        when(projetoRiscoRepository.findByProjeto_Id(8)).thenReturn(List.of());
+
+        ProjetoResponseDTO response = projetoService.update(8, dto, 1);
+
+        assertNull(projeto.getClienteId());
+        assertNull(response.getClienteId());
+        verify(clienteRepository, never()).existsByIdAndOrganizacaoId(anyInt(), anyInt());
+    }
+
+    @Test
+    void update_rejectsClientFromAnotherOrganization() {
+        Projeto projeto = new Projeto();
+        projeto.setId(8);
+        projeto.setOrganizacaoId(1);
+        projeto.setStartDate(LocalDate.now());
+        projeto.setEndDate(LocalDate.now().plusDays(20));
+
+        ProjetoRequestDTO dto = new ProjetoRequestDTO();
+        dto.setClienteId(9);
+
+        when(projetoRepository.findByIdAndOrganizacaoId(8, 1))
+                .thenReturn(Optional.of(projeto));
+        when(clienteRepository.existsByIdAndOrganizacaoId(9, 1))
+                .thenReturn(false);
+
+        assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> projetoService.update(8, dto, 1)
+        );
+        verify(projetoRepository, never()).save(any(Projeto.class));
+    }
+
+    @Test
     void listAll_convertsToFrontendUsingSprintAndTasksAndTeam() {
 
         Projeto projeto = new Projeto();

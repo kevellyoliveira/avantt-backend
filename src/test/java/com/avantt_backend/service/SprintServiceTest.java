@@ -17,6 +17,7 @@ import com.avantt_backend.repository.TarefaRepository;
 import com.avantt_backend.repository.UsuarioRepository;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -59,6 +60,23 @@ class SprintServiceTest {
     @InjectMocks
     private SprintService sprintService;
 
+    @BeforeEach
+    void stubSprintStatuses() {
+        lenient().when(statusTarefaRepository.findById(1))
+                .thenReturn(Optional.of(status(1, "Planejada")));
+        lenient().when(statusTarefaRepository.findById(2))
+                .thenReturn(Optional.of(status(2, "Em andamento")));
+        lenient().when(statusTarefaRepository.findById(3))
+                .thenReturn(Optional.of(status(3, "Concluída")));
+    }
+
+    private Status status(Integer id, String name) {
+        Status status = new Status();
+        status.setId(id);
+        status.setNome(name);
+        return status;
+    }
+
     private SprintRequestDTO buildValidDto() {
 
         SprintRequestDTO dto = new SprintRequestDTO();
@@ -78,6 +96,7 @@ class SprintServiceTest {
 
         SprintRequestDTO dto = new SprintRequestDTO();
         dto.setProjectId(99);
+        dto.setStatusId(1);
 
         when(projetoRepository.findById(99))
                 .thenReturn(Optional.empty());
@@ -89,15 +108,30 @@ class SprintServiceTest {
     }
 
     @Test
+    void create_rejectsStatusOutsideSprintOptions() {
+        SprintRequestDTO dto = buildValidDto();
+        dto.setStatusId(4);
+        when(statusTarefaRepository.findById(4))
+                .thenReturn(Optional.of(status(4, "Bloqueada")));
+
+        ApiException exception = assertThrows(
+                ApiException.class,
+                () -> sprintService.create(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("Status de sprint inválido"));
+    }
+
+    @Test
     void create_success_computesCountsAndProgress() {
 
         SprintRequestDTO dto = new SprintRequestDTO();
 
         dto.setProjectId(3);
         dto.setName("S1");
+        dto.setStatusId(2);
         dto.setStartDate(LocalDate.now().minusDays(5));
         dto.setEndDate(LocalDate.now().plusDays(15));
-        dto.setStatusId(1);
 
         Projeto projeto = new Projeto();
 
@@ -107,14 +141,6 @@ class SprintServiceTest {
         when(projetoRepository.findById(3))
                 .thenReturn(Optional.of(projeto));
 
-        Status status = new Status();
-
-        status.setId(1);
-        status.setNome("Em andamento");
-
-        when(statusTarefaRepository.findById(1))
-                .thenReturn(Optional.of(status));
-
         Sprint saved = new Sprint();
 
         saved.setId(99);
@@ -122,7 +148,7 @@ class SprintServiceTest {
         saved.setNome("S1");
         saved.setDataInicio(dto.getStartDate());
         saved.setDataFim(dto.getEndDate());
-        saved.setStatusId(1);
+        saved.setStatus("Em andamento");
 
         when(sprintRepository.save(any(Sprint.class)))
                 .thenReturn(saved);
@@ -138,6 +164,8 @@ class SprintServiceTest {
 
         when(tarefaRepository.countBySprintIdAndStatusName(99, "Done"))
                 .thenReturn(5);
+        when(sprintUsuarioRepository.findByIdSprintId(99))
+                .thenReturn(List.of());
 
         SprintResponseDTO result = sprintService.create(dto);
 
@@ -180,9 +208,6 @@ class SprintServiceTest {
         when(sprintUsuarioRepository.findByIdSprintId(1))
                 .thenReturn(List.of());
 
-        when(projetoUsuarioRepository.findByIdProjetoId(4))
-                .thenReturn(List.of());
-
         var list = sprintService.listAll(null);
 
         assertEquals(1, list.size());
@@ -207,14 +232,6 @@ class SprintServiceTest {
         when(projetoRepository.findById(1))
                 .thenReturn(Optional.of(projeto));
 
-        Status status = new Status();
-
-        status.setId(1);
-        status.setNome("Em andamento");
-
-        when(statusTarefaRepository.findById(1))
-                .thenReturn(Optional.of(status));
-
         Sprint saved = new Sprint();
 
         saved.setId(10);
@@ -222,7 +239,7 @@ class SprintServiceTest {
         saved.setNome(dto.getName());
         saved.setDataInicio(dto.getStartDate());
         saved.setDataFim(dto.getEndDate());
-        saved.setStatusId(1);
+        saved.setStatus("Planejada");
 
         when(sprintRepository.save(any(Sprint.class)))
                 .thenReturn(saved);
@@ -254,6 +271,8 @@ class SprintServiceTest {
 
         when(sprintUsuarioRepository.existsById(any()))
                 .thenReturn(false);
+        when(sprintUsuarioRepository.findByIdSprintId(10))
+                .thenReturn(List.of());
 
         SprintResponseDTO result = sprintService.create(dto);
 
@@ -331,6 +350,39 @@ class SprintServiceTest {
     }
 
     @Test
+    void update_persistsGoalAndSprintStatus() {
+        Sprint sprint = new Sprint();
+        sprint.setId(5);
+        sprint.setProjetoId(2);
+        sprint.setNome("S1");
+        sprint.setObjetivo("Objetivo anterior");
+        sprint.setStatus("Planejada");
+        sprint.setDataInicio(LocalDate.now().minusDays(30));
+        sprint.setDataFim(LocalDate.now().minusDays(15));
+
+        Projeto projeto = new Projeto();
+        projeto.setId(2);
+        projeto.setName("Projeto");
+
+        when(sprintRepository.findById(5)).thenReturn(Optional.of(sprint));
+        when(projetoRepository.findById(2)).thenReturn(Optional.of(projeto));
+        when(sprintRepository.save(any(Sprint.class))).thenReturn(sprint);
+        when(sprintUsuarioRepository.findByIdSprintId(5)).thenReturn(List.of());
+        when(tarefaRepository.findBySprintId(5)).thenReturn(List.of());
+
+        SprintRequestDTO dto = new SprintRequestDTO();
+        dto.setGoal("Novo objetivo");
+        dto.setStatusId(3);
+
+        SprintResponseDTO result = sprintService.update(5, dto);
+
+        assertEquals("Novo objetivo", result.getGoal());
+        assertEquals("Finalizada", result.getStatus());
+        assertEquals("Novo objetivo", sprint.getObjetivo());
+        assertEquals("Finalizada", sprint.getStatus());
+    }
+
+    @Test
     void update_addTeam_userNotFound_throwsApiException() {
 
         Sprint sprint = new Sprint();
@@ -355,6 +407,7 @@ class SprintServiceTest {
 
         SprintRequestDTO dto = new SprintRequestDTO();
 
+        dto.setStatusId(1);
         dto.setAddTeam(List.of(99));
 
         when(sprintRepository.save(any(Sprint.class)))
@@ -398,6 +451,7 @@ class SprintServiceTest {
 
         SprintRequestDTO dto = new SprintRequestDTO();
 
+        dto.setStatusId(1);
         dto.setRemoveTeam(List.of(3));
 
         when(sprintRepository.save(any(Sprint.class)))

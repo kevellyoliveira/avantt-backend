@@ -1,7 +1,6 @@
 package com.avantt_backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotBlank;
@@ -11,6 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public class TarefaRequestDTO {
+    public interface OnCreate {}
 
     @NotBlank(message = "Titulo é obrigatório")
     private String title;
@@ -18,7 +18,7 @@ public class TarefaRequestDTO {
     @NotNull(message = "projectId é obrigatório")
     private Integer projectId;
 
-    @NotNull(message = "sprintId é obrigatório")
+    @NotNull(message = "sprintId é obrigatório", groups = OnCreate.class)
     private Integer sprintId;
     // front expects `assignee` (user id). This maps to tarefa.atribuido_para in DB
     private Integer assigneeId;
@@ -32,7 +32,7 @@ public class TarefaRequestDTO {
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     @NotNull(message = "Data de entrega é obrigatório")
-    @Future(message = "Data de entrega deve ser no futuro")
+    @Future(message = "Data de entrega deve ser no futuro", groups = OnCreate.class)
     private LocalDate plannedEnd;
 
     private Integer estimatedHours;

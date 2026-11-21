@@ -33,9 +33,9 @@ class SprintRequestDTOValidationTest {
     void validDto_noViolations() {
         SprintRequestDTO dto = new SprintRequestDTO();
         dto.setProjectId(1);
+        dto.setStatusId(1);
         dto.setStartDate(LocalDate.now());
         dto.setEndDate(LocalDate.now().plusDays(20));
-        dto.setStatusId(1);
 
         Set<ConstraintViolation<SprintRequestDTO>> violations = validator.validate(dto);
         assertTrue(violations.isEmpty());
@@ -44,31 +44,29 @@ class SprintRequestDTOValidationTest {
     @Test
     void missingRequiredFields_triggerViolations() {
         SprintRequestDTO dto = new SprintRequestDTO();
-        // missing startDate, endDate, statusId
+        // missing startDate and endDate
 
         Set<ConstraintViolation<SprintRequestDTO>> violations = validator.validate(dto);
         assertFalse(violations.isEmpty());
 
         boolean hasStart = violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("startDate"));
         boolean hasEnd = violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("endDate"));
-        boolean hasStatus = violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("statusId"));
+        boolean hasStatusId = violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("statusId"));
 
         assertTrue(hasStart);
         assertTrue(hasEnd);
-        assertTrue(hasStatus);
+        assertTrue(hasStatusId);
     }
 
     @Test
-    void invalidDates_triggerViolations() {
+    void pastDatesAreAllowedForExistingSprints() {
         SprintRequestDTO dto = new SprintRequestDTO();
         dto.setProjectId(1);
+        dto.setStatusId(3);
         dto.setStartDate(LocalDate.now().minusDays(1));
         dto.setEndDate(LocalDate.now().minusDays(1));
-        dto.setStatusId(1);
 
         Set<ConstraintViolation<SprintRequestDTO>> violations = validator.validate(dto);
-        assertFalse(violations.isEmpty());
-        assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("startDate")));
-        assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("endDate")));
+        assertTrue(violations.isEmpty());
     }
 }

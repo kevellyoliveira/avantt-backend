@@ -18,16 +18,17 @@ public class Sprint {
     @Column(name = "nome")
     private String nome;
 
+    @Column(name = "objetivo", columnDefinition = "TEXT")
+    private String objetivo;
+
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "Planejada";
+
     @Column(name = "data_inicio")
     private LocalDate dataInicio;
 
     @Column(name = "data_fim")
     private LocalDate dataFim;
-
-    // Não existe status_id na tabela sprint.
-    // Mantido apenas para compatibilidade com o código.
-    @Transient
-    private Integer statusId;
 
     @Column(name = "progresso")
     private Integer progresso;
@@ -58,6 +59,22 @@ public class Sprint {
         this.nome = nome;
     }
 
+    public String getObjetivo() {
+        return objetivo;
+    }
+
+    public void setObjetivo(String objetivo) {
+        this.objetivo = objetivo;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
     public LocalDate getDataInicio() {
         return dataInicio;
     }
@@ -72,14 +89,6 @@ public class Sprint {
 
     public void setDataFim(LocalDate dataFim) {
         this.dataFim = dataFim;
-    }
-
-    public Integer getStatusId() {
-        return statusId;
-    }
-
-    public void setStatusId(Integer statusId) {
-        this.statusId = statusId;
     }
 
     public Integer getProgresso() {

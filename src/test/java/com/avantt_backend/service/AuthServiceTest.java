@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -107,5 +108,41 @@ class AuthServiceTest {
         confirm.setToken("t1");
         confirm.setNewPassword("newpass");
         assertFalse(authService.confirmPasswordReset(confirm));
+    }
+
+    @Test
+    void changePassword_updatesPasswordWhenCurrentPasswordMatches() {
+        var encoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+        Usuario usuario = new Usuario();
+        usuario.setId(10);
+        usuario.setSenha(encoder.encode("current-pass"));
+        usuario.setAuthToken("valid-token");
+        usuario.setAuthTokenExpiry(LocalDateTime.now().plusHours(1));
+        usuario.setPrimeiroAcessoValidado(true);
+
+        when(usuarioRepository.findByAuthToken("valid-token")).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        authService.changePassword("valid-token", "current-pass", "new-pass-123");
+
+        assertTrue(encoder.matches("new-pass-123", usuario.getSenha()));
+        verify(usuarioRepository).save(usuario);
+    }
+
+    @Test
+    void changePassword_rejectsIncorrectCurrentPassword() {
+        var encoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+        Usuario usuario = new Usuario();
+        usuario.setSenha(encoder.encode("current-pass"));
+        usuario.setAuthToken("valid-token");
+        usuario.setAuthTokenExpiry(LocalDateTime.now().plusHours(1));
+        usuario.setPrimeiroAcessoValidado(true);
+
+        when(usuarioRepository.findByAuthToken("valid-token")).thenReturn(Optional.of(usuario));
+
+        assertThrows(
+                ResponseStatusException.class,
+                () -> authService.changePassword("valid-token", "wrong-pass", "new-pass-123"));
+        verify(usuarioRepository, never()).save(any(Usuario.class));
     }
 }

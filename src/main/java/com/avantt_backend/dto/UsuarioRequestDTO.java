@@ -16,6 +16,8 @@ public class UsuarioRequestDTO {
     private String email;
 
     private String role;
+    private String cpf;
+    private String phone;
     @NotNull(message = "perfilId é obrigatório")
     private Integer perfilId;
     private String avatar;
@@ -34,6 +36,12 @@ public class UsuarioRequestDTO {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    public String getCpf() { return cpf; }
+    public void setCpf(String cpf) { this.cpf = cpf; }
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 
     public Integer getPerfilId() { return perfilId; }
     public void setPerfilId(Integer perfilId) { this.perfilId = perfilId; }

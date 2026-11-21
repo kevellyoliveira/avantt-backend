@@ -115,6 +115,26 @@ class TarefaServiceTest {
     }
 
     @Test
+    void updateStatus_rejectsRemovedLifecycleStatuses() {
+        Tarefa tarefa = new Tarefa();
+        tarefa.setId(12);
+        Status status = new Status();
+        status.setId(6);
+        status.setNome("Cancelada");
+
+        when(tarefaRepository.findById(12)).thenReturn(Optional.of(tarefa));
+        when(statusTarefaRepository.findById(6)).thenReturn(Optional.of(status));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> tarefaService.updateStatus(12, 6)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(tarefaRepository, never()).save(any(Tarefa.class));
+    }
+
+    @Test
     void create_throwsWhenProjectNotFound() {
 
         TarefaRequestDTO dto = new TarefaRequestDTO();

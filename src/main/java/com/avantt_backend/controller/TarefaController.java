@@ -13,7 +13,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import jakarta.validation.Valid;
+import jakarta.validation.groups.Default;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +26,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.avantt_backend.service.AuthService;
 
 import static com.avantt_backend.util.ApiPaths.TAREFAS;
 import static com.avantt_backend.util.Mensagens.*;
@@ -34,6 +39,9 @@ import static com.avantt_backend.util.Mensagens.*;
 public class TarefaController {
 
     private final TarefaService tarefaService;
+
+    @Autowired
+    private AuthService authService;
 
     public TarefaController(TarefaService tarefaService) {
         this.tarefaService = tarefaService;
@@ -58,7 +66,7 @@ public class TarefaController {
                     @ExampleObject(name = "Tarefa request example", value = "{\"title\":\"Corrigir bug do login\",\"projectId\":1,\"sprintId\":3,\"assigneeId\":2,\"statusId\":2,\"plannedEnd\":\"2027-08-15\",\"priority\":\"alta\",\"tagIds\":[1,3],\"description\":\"Corrigir problema X\"}")
                 })
             )
-            @Valid @org.springframework.web.bind.annotation.RequestBody TarefaRequestDTO request) {
+            @Validated({Default.class, TarefaRequestDTO.OnCreate.class}) @org.springframework.web.bind.annotation.RequestBody TarefaRequestDTO request) {
         var created = tarefaService.create(request);
         return ResponseEntity.status(201).body(created);
     }
@@ -75,7 +83,30 @@ public class TarefaController {
             @Parameter(description = "ID da sprint para filtrar tarefas", required = false)
             @RequestParam(value = "sprintId", required = false) String sprintId,
             @Parameter(description = "Status das tarefas para filtrar", required = false)
-            @RequestParam(value = "status", required = false) String status) {
+            @RequestParam(value = "status", required = false) String status,
+            HttpServletRequest request) {
+        Integer organizacaoId = getOrganizacaoId(request);
+        List<TarefaResponseDTO> list = organizacaoId == null
+                ? tarefaService.listAll(projetoId, sprintId, status)
+                : tarefaService.listAll(projetoId, sprintId, status, organizacaoId);
+        return ResponseEntity.ok(list);
+    }
+
+    private Integer getOrganizacaoId(HttpServletRequest request) {
+        if (authService == null || request == null) return null;
+        String authorization = request.getHeader("Authorization");
+        if (authorization == null || authorization.isBlank()) return null;
+        String token = authorization.trim();
+        if (token.regionMatches(true, 0, "Bearer ", 0, 7)) token = token.substring(7).trim();
+        if (token.isBlank()) return null;
+        try {
+            return authService.obterUsuarioAutenticado(token).getOrganizacaoId();
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    public ResponseEntity<?> list(String projetoId, String sprintId, String status) {
         List<TarefaResponseDTO> list = tarefaService.listAll(projetoId, sprintId, status);
         return ResponseEntity.ok(list);
     }
@@ -106,7 +137,7 @@ public class TarefaController {
         return ResponseEntity.ok(list);
     }
 
-    @Operation(summary = "Atualizar tarefa", description = "Atualiza todos os campos de uma tarefa existente. Regras de validação iguais à criação.")
+    @Operation(summary = "Atualizar tarefa", description = "Atualiza os campos de uma tarefa existente. Prazos vencidos podem ser mantidos durante a edição.")
     @PutMapping(path = "/{id}", consumes = "application/json", produces = "application/json")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Tarefa atualizada com sucesso",
