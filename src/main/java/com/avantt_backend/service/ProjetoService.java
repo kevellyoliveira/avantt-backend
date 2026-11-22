@@ -1,3 +1,4 @@
+
 package com.avantt_backend.service;
 
 import com.avantt_backend.dto.ProjetoRequestDTO;
@@ -13,7 +14,6 @@ import com.avantt_backend.entity.ProjetoMarco;
 import com.avantt_backend.entity.ProjetoRisco;
 
 import com.avantt_backend.exception.ApiException;
-
 import com.avantt_backend.repository.*;
 
 import org.springframework.stereotype.Service;
@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,6 +45,7 @@ public class ProjetoService {
     private final ProjetoMarcoRepository projetoMarcoRepository;
     private final ProjetoRiscoRepository projetoRiscoRepository;
     private final ConviteService conviteService;
+    private final PerfilRepository perfilRepository;
 
     private static final List<String> STATUS_VALIDOS = Arrays.asList(
             "Planejada",
@@ -63,7 +65,8 @@ public class ProjetoService {
             ClienteRepository clienteRepository,
             ProjetoMarcoRepository projetoMarcoRepository,
             ProjetoRiscoRepository projetoRiscoRepository,
-            ConviteService conviteService) {
+            ConviteService conviteService,
+            PerfilRepository perfilRepository) {
 
         this.projetoRepository = projetoRepository;
         this.usuarioRepository = usuarioRepository;
@@ -76,25 +79,113 @@ public class ProjetoService {
         this.projetoMarcoRepository = projetoMarcoRepository;
         this.projetoRiscoRepository = projetoRiscoRepository;
         this.conviteService = conviteService;
+        this.perfilRepository = perfilRepository;
     }
 
+    /**
+     * Lista os projetos conforme o perfil do usuário.
+     *
+     * Administrador e Gerente:
+     * Visualizam todos os projetos da própria organização.
+     *
+     * Desenvolvedor e Colaborador:
+     * Visualizam somente os projetos vinculados a eles,
+     * independentemente da organização do projeto.
+     */
+    @Transactional(readOnly = true)
     public List<ProjetoResponseDTO> listarPorOrganizacaoOuMembro(
             Integer organizacaoId,
             Integer usuarioId) {
 
-        List<ProjetoUsuario> vinculos =
-                projetoUsuarioRepository.findByIdUsuarioId(usuarioId);
+        if (organizacaoId == null || usuarioId == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Não foi possível identificar o usuário ou sua organização."
+            );
+        }
 
-        Set<Integer> projetosDoUsuario = vinculos.stream()
-                .map(pu -> pu.getId().getProjetoId())
-                .collect(Collectors.toSet());
+        var usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Usuário autenticado não encontrado."
+                ));
 
-        return projetoRepository.findAll()
-                .stream()
-                .filter(projeto ->
-                        organizacaoId.equals(projeto.getOrganizacaoId())
-                                || projetosDoUsuario.contains(projeto.getId())
-                )
+        if (!organizacaoId.equals(usuario.getOrganizacaoId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Usuário não pertence à organização informada."
+            );
+        }
+
+        if (usuario.getPerfilId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Usuário não possui um perfil válido."
+            );
+        }
+
+        var perfil = perfilRepository.findById(usuario.getPerfilId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Perfil do usuário não encontrado."
+                ));
+
+        String nomePerfil = perfil.getNome() == null
+                ? ""
+                : perfil.getNome().trim();
+
+        boolean acessoTotalOrganizacao =
+                "Administrador".equalsIgnoreCase(nomePerfil)
+                        || "Gerente".equalsIgnoreCase(nomePerfil);
+
+        List<Projeto> projetos;
+
+        if (acessoTotalOrganizacao) {
+
+            projetos = projetoRepository.findAll()
+                    .stream()
+                    .filter(projeto ->
+                            organizacaoId.equals(projeto.getOrganizacaoId())
+                    )
+                    .collect(Collectors.toList());
+
+        } else if ("Desenvolvedor".equalsIgnoreCase(nomePerfil)
+                || "Colaborador".equalsIgnoreCase(nomePerfil)) {
+
+            List<ProjetoUsuario> vinculos =
+                    projetoUsuarioRepository.findByIdUsuarioId(usuarioId);
+
+            Set<Integer> projetosDoUsuario = vinculos == null
+                    ? new HashSet<>()
+                    : vinculos.stream()
+                    .filter(pu -> pu.getId() != null)
+                    .map(pu -> pu.getId().getProjetoId())
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            /*
+             * Desenvolvedores e Colaboradores visualizam somente
+             * os projetos aos quais estão vinculados.
+             *
+             * O vínculo na tabela projeto_usuario representa
+             * a autorização de acesso ao projeto.
+             */
+            projetos = projetoRepository.findAll()
+                    .stream()
+                    .filter(projeto ->
+                            projetosDoUsuario.contains(projeto.getId())
+                    )
+                    .collect(Collectors.toList());
+
+        } else {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Perfil sem permissão para visualizar projetos."
+            );
+        }
+
+        return projetos.stream()
                 .map(this::toFrontend)
                 .collect(Collectors.toList());
     }
@@ -104,11 +195,27 @@ public class ProjetoService {
         return sprintService.recalculateAndPersistProjectProgress(projetoId);
     }
 
-    // Cadastrar projeto
+    /**
+     * Compatibilidade com chamadas antigas que informam somente
+     * o DTO e o ID da organização.
+     *
+     * Novos fluxos devem utilizar a versão com três parâmetros,
+     * informando o usuário autenticado.
+     */
     @Transactional
     public ProjetoResponseDTO create(
             ProjetoRequestDTO dto,
             Integer organizacaoId) {
+
+        return create(dto, organizacaoId, null);
+    }
+
+    // Cadastrar projeto
+    @Transactional
+    public ProjetoResponseDTO create(
+            ProjetoRequestDTO dto,
+            Integer organizacaoId,
+            Integer criadoPorId) {
 
         Projeto p = new Projeto();
 
@@ -149,7 +256,17 @@ public class ProjetoService {
             );
         }
 
+        if (criadoPorId != null
+                && !usuarioRepository.existsById(criadoPorId)) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Usuário criador do projeto inválido."
+            );
+        }
+
         p.setOrganizacaoId(organizacaoId);
+        p.setCriadoPorId(criadoPorId);
 
         p.setStartDate(dto.getStartDate());
 
@@ -165,8 +282,6 @@ public class ProjetoService {
 
         Projeto saved = projetoRepository.save(p);
 
-        // Associar equipe ao projeto.
-        // Usuários sem primeiro acesso validado receberão convite.
         if (dto.getTeam() != null) {
             for (Integer usuarioId : dto.getTeam()) {
                 adicionarUsuarioEquipe(saved, usuarioId);
@@ -438,7 +553,6 @@ public class ProjetoService {
             usuariosNovos.add(usuarioId);
         }
 
-        // Adicionar novos integrantes
         for (Integer usuarioId : usuariosNovos) {
 
             if (!usuariosAtuais.contains(usuarioId)) {
@@ -446,7 +560,6 @@ public class ProjetoService {
             }
         }
 
-        // Remover integrantes que não estão mais na lista
         for (Integer usuarioId : usuariosAtuais) {
 
             if (!usuariosNovos.contains(usuarioId)) {
@@ -486,7 +599,6 @@ public class ProjetoService {
 
             projetoUsuarioRepository.save(pu);
 
-            // Envia convite somente se o primeiro acesso ainda não foi validado.
             conviteService.convidarSeNecessario(usuarioId);
         }
     }
@@ -509,7 +621,6 @@ public class ProjetoService {
             return;
         }
 
-        // Verificar se o usuário está associado a alguma tarefa
         int assigned = tarefaRepository.countByProjetoIdAndAssignee(
                 projeto.getId(),
                 usuarioId

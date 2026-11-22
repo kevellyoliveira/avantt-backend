@@ -20,10 +20,13 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+
+import java.util.Map;
 
 import static com.avantt_backend.util.Mensagens.*;
 
@@ -78,8 +81,7 @@ public class AuthController {
 
         if (res == null) {
             throw new com.avantt_backend.exception.ConflictException(
-                    MENSAGEM_EMAIL_CADASTRADO_409
-            );
+                    MENSAGEM_EMAIL_CADASTRADO_409);
         }
 
         java.util.Map<String, Object> resp =
@@ -88,7 +90,7 @@ public class AuthController {
         resp.put("usuario", res);
         resp.put("user", res);
 
-        return ResponseEntity.status(201).body(resp);
+        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
 
     @PostMapping("/login")
@@ -123,11 +125,9 @@ public class AuthController {
 
         if (res == null) {
             throw new com.avantt_backend.exception.UnauthorizedException(
-                    MENSAGEM_CREDENCIAIS_INVALIDAS_401
-            );
+                    MENSAGEM_CREDENCIAIS_INVALIDAS_401);
         }
 
-        // Primeiro acesso pendente: não disponibiliza token de sessão.
         if (res.isRequiresFirstAccessValidation()) {
             return ResponseEntity.ok(res);
         }
@@ -137,9 +137,6 @@ public class AuthController {
                 .body(res);
     }
 
-    /**
-     * Valida o código enviado por e-mail e conclui o primeiro acesso.
-     */
     @PostMapping("/convite/aceitar")
     @Operation(summary = "Validar código e concluir primeiro acesso")
     @ApiResponses(value = {
@@ -190,8 +187,7 @@ public class AuthController {
 
         if (!ok) {
             throw new com.avantt_backend.exception.UnauthorizedException(
-                    MENSAGEM_TOKEN_INVALIDO
-            );
+                    MENSAGEM_TOKEN_INVALIDO);
         }
 
         return ResponseEntity.ok().build();
@@ -200,13 +196,11 @@ public class AuthController {
     @PostMapping("/password-reset/request")
     @Operation(summary = "Solicitar redefinição de senha")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Token de reset retornado"),
-            @ApiResponse(responseCode = "404", description = "Email não encontrado",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Solicitação processada. Se o e-mail estiver cadastrado, será enviado um link de recuperação.")
     })
     public ResponseEntity<?> passwordResetRequest(
             @RequestBody(
-                    description = "Corpo: { \"email\": <email> }",
+                    description = "Corpo: { \"email\": \"ana.souza@email.com\" }",
                     required = true,
                     content = @Content(
                             mediaType = "application/json",
@@ -223,16 +217,13 @@ public class AuthController {
             @org.springframework.web.bind.annotation.RequestBody
             PasswordResetRequestDTO req) {
 
-        String token = authService.requestPasswordReset(req);
-
-        if (token == null) {
-            throw new com.avantt_backend.exception.ResourceNotFoundException(
-                    MENSAGEM_ERRO_EMAIL_404
-            );
-        }
+        authService.requestPasswordReset(req);
 
         return ResponseEntity.ok(
-                java.util.Map.of("resetToken", token)
+                Map.of(
+                        "message",
+                        "Se o e-mail estiver cadastrado, você receberá as instruções para redefinir sua senha."
+                )
         );
     }
 
@@ -245,7 +236,7 @@ public class AuthController {
     })
     public ResponseEntity<?> passwordResetConfirm(
             @RequestBody(
-                    description = "Corpo: { \"token\": <token>, \"newPassword\": <senha> }",
+                    description = "Corpo: { \"token\": \"abc123\", \"newPassword\": \"NovaSenha123!\" }",
                     required = true,
                     content = @Content(
                             mediaType = "application/json",
@@ -266,11 +257,11 @@ public class AuthController {
 
         if (!ok) {
             throw new com.avantt_backend.exception.ApiException(
-                    MENSAGEM_ERRO_TOKEN_400
-            );
+                    MENSAGEM_ERRO_TOKEN_400);
         }
 
-        return ResponseEntity.ok().build();
+        // Retorna true porque o frontend espera um booleano no corpo.
+        return ResponseEntity.ok(true);
     }
 
     @GetMapping("/register-organizacao")
@@ -288,6 +279,7 @@ public class AuthController {
     }
 
     @PostMapping("/register-organizacao")
+    @Transactional
     @Operation(summary = "Registrar organização e usuário (compatibilidade com frontend)")
     public ResponseEntity<?> registerOrganizacao(
             @RequestBody(
@@ -302,7 +294,6 @@ public class AuthController {
             @org.springframework.web.bind.annotation.RequestBody
             RegisterOrganizacaoRequestDTO req) {
 
-        // Aceita objetos aninhados ou campos diretamente no corpo da requisição.
         var orgReq = req.getOrganizacao();
 
         if (orgReq == null) {
@@ -312,21 +303,6 @@ public class AuthController {
             orgReq.setCnpj(req.getCnpj());
             orgReq.setEmailContato(req.getEmailContato());
             orgReq.setIsAtivo(req.getIsAtivo());
-        }
-
-        var createdOrg = organizacaoService.create(orgReq);
-
-        Integer orgId = null;
-
-        try {
-            orgId = createdOrg.getId() == null
-                    ? null
-                    : Integer.valueOf(createdOrg.getId());
-
-        } catch (NumberFormatException ex) {
-            throw new com.avantt_backend.exception.ApiException(
-                    "Erro ao criar organização"
-            );
         }
 
         var userReq = req.getUsuario();
@@ -340,22 +316,44 @@ public class AuthController {
             userReq.setRole(req.getRole());
         }
 
+        /*
+         * Procura a organização pelo CNPJ.
+         * Se já existir, utiliza o ID existente.
+         * Se não existir, cria uma nova organização.
+         */
+        var organization = organizacaoService.findOrCreateByCnpj(orgReq);
+
+        Integer orgId;
+
+        try {
+            orgId = organization.getId() == null
+                    ? null
+                    : Integer.valueOf(organization.getId());
+
+        } catch (NumberFormatException ex) {
+            throw new com.avantt_backend.exception.ApiException(
+                    "Erro ao identificar a organização."
+            );
+        }
+
+        /*
+         * Registra o administrador na organização encontrada ou criada.
+         */
         var createdUser = authService.register(userReq, orgId);
 
         if (createdUser == null) {
             throw new com.avantt_backend.exception.ConflictException(
-                    MENSAGEM_EMAIL_CADASTRADO_409
-            );
+                    MENSAGEM_EMAIL_CADASTRADO_409);
         }
 
         java.util.Map<String, Object> resp =
                 new java.util.LinkedHashMap<>();
 
-        resp.put("organizacao", createdOrg);
-        resp.put("organization", createdOrg);
+        resp.put("organizacao", organization);
+        resp.put("organization", organization);
         resp.put("usuario", createdUser);
         resp.put("user", createdUser);
 
-        return ResponseEntity.status(201).body(resp);
+        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
 }

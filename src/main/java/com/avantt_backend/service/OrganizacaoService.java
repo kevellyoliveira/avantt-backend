@@ -1,3 +1,4 @@
+
 package com.avantt_backend.service;
 
 import com.avantt_backend.dto.OrganizacaoRequestDTO;
@@ -10,8 +11,10 @@ import com.avantt_backend.repository.OrganizacaoRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,15 +34,11 @@ public class OrganizacaoService {
     @Transactional
     public OrganizacaoResponseDTO create(OrganizacaoRequestDTO dto) {
 
-        String normalizedCnpj = null;
+        String normalizedCnpj = normalizarCnpj(dto.getCnpj());
 
-        if (dto.getCnpj() != null) {
-
-            normalizedCnpj = dto.getCnpj().replaceAll("\\D", "");
-
-            if (organizacaoRepository.existsByCnpj(normalizedCnpj)) {
-                throw new ConflictException("CNPJ já cadastrado");
-            }
+        if (normalizedCnpj != null
+                && organizacaoRepository.existsByCnpj(normalizedCnpj)) {
+            throw new ConflictException("CNPJ já cadastrado");
         }
 
         Organizacao organizacao = new Organizacao();
@@ -60,20 +59,61 @@ public class OrganizacaoService {
 
         Organizacao saved = organizacaoRepository.save(organizacao);
 
-        // Garante que os campos gerados pelo banco sejam carregados.
         em.flush();
         em.refresh(saved);
 
         return toDto(saved);
     }
 
+    /**
+     * Procura uma organização pelo CNPJ.
+     *
+     * Se já existir, reutiliza a organização encontrada.
+     * Caso contrário, realiza o cadastro de uma nova organização.
+     */
     @Transactional
-    public OrganizacaoResponseDTO update(Integer id, OrganizacaoRequestDTO dto) {
+    public OrganizacaoResponseDTO findOrCreateByCnpj(
+            OrganizacaoRequestDTO dto) {
+
+        String normalizedCnpj = normalizarCnpj(dto.getCnpj());
+
+        if (normalizedCnpj == null || normalizedCnpj.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "CNPJ da organização é obrigatório."
+            );
+        }
+
+        Organizacao existente =
+                organizacaoRepository.findByCnpj(normalizedCnpj);
+
+        if (existente != null) {
+            if (Boolean.FALSE.equals(existente.getIsAtivo())) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "A organização informada está inativa."
+                );
+            }
+
+            return toDto(existente);
+        }
+
+        dto.setCnpj(normalizedCnpj);
+
+        return create(dto);
+    }
+
+    @Transactional
+    public OrganizacaoResponseDTO update(
+            Integer id,
+            OrganizacaoRequestDTO dto) {
 
         var optional = organizacaoRepository.findById(id);
 
         if (optional.isEmpty()) {
-            throw new ResourceNotFoundException("Organização não encontrada");
+            throw new ResourceNotFoundException(
+                    "Organização não encontrada"
+            );
         }
 
         Organizacao organizacao = optional.get();
@@ -84,7 +124,7 @@ public class OrganizacaoService {
 
         if (dto.getCnpj() != null) {
 
-            String normalized = dto.getCnpj().replaceAll("\\D", "");
+            String normalized = normalizarCnpj(dto.getCnpj());
 
             if (!normalized.equals(organizacao.getCnpj())) {
 
@@ -139,6 +179,17 @@ public class OrganizacaoService {
                 );
     }
 
+    private String normalizarCnpj(String cnpj) {
+
+        if (cnpj == null) {
+            return null;
+        }
+
+        String normalized = cnpj.replaceAll("\\D", "");
+
+        return normalized.isBlank() ? null : normalized;
+    }
+
     private OrganizacaoResponseDTO toDto(Organizacao organizacao) {
 
         OrganizacaoResponseDTO response = new OrganizacaoResponseDTO();
@@ -152,7 +203,6 @@ public class OrganizacaoService {
         response.setName(organizacao.getNomeFantasia());
         response.setTradeName(organizacao.getNomeFantasia());
 
-        // Campos não existentes na entidade permanecem nulos.
         response.setCnpj(
                 organizacao.getCnpj() == null
                         ? null

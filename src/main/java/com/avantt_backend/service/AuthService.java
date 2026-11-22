@@ -3,7 +3,6 @@ package com.avantt_backend.service;
 
 import com.avantt_backend.dto.AuthRequestDTO;
 import com.avantt_backend.dto.LoginResponseDTO;
-import com.avantt_backend.dto.AuthResponseDTO;
 import com.avantt_backend.dto.RegisterRequestDTO;
 import com.avantt_backend.dto.PasswordResetRequestDTO;
 import com.avantt_backend.dto.PasswordResetConfirmDTO;
@@ -15,35 +14,44 @@ import com.avantt_backend.entity.Perfil;
 import com.avantt_backend.repository.UsuarioRepository;
 import com.avantt_backend.repository.PerfilRepository;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.LocalDateTime;
+import java.util.Locale;
+import java.util.UUID;
 
 @Service
 public class AuthService {
 
     private final UsuarioRepository usuarioRepository;
     private final PerfilRepository perfilRepository;
+    private final EmailService emailService;
 
     private final BCryptPasswordEncoder passwordEncoder =
             new BCryptPasswordEncoder();
 
     private final Logger log = LoggerFactory.getLogger(AuthService.class);
 
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
+
     public AuthService(
             UsuarioRepository usuarioRepository,
-            PerfilRepository perfilRepository) {
+            PerfilRepository perfilRepository,
+            EmailService emailService) {
 
         this.usuarioRepository = usuarioRepository;
         this.perfilRepository = perfilRepository;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -51,7 +59,7 @@ public class AuthService {
 
         String email = req.getEmail() == null
                 ? null
-                : req.getEmail().trim().toLowerCase();
+                : req.getEmail().trim().toLowerCase(Locale.ROOT);
 
         if (email == null || email.isBlank()) {
             throw new com.avantt_backend.exception.ApiException(
@@ -76,8 +84,6 @@ public class AuthService {
         Integer defaultPerfilId = getOrCreatePerfilId("Colaborador");
         u.setPerfilId(defaultPerfilId);
 
-        // O colaborador deverá validar o primeiro acesso após ser vinculado
-        // a um projeto por um gestor.
         u.setPrimeiroAcessoValidado(false);
 
         Usuario saved = usuarioRepository.save(u);
@@ -93,10 +99,6 @@ public class AuthService {
         return toResponseDTO(saved);
     }
 
-    /**
-     * Registra um usuário vinculado a uma organização.
-     * Esse fluxo é utilizado para o cadastro do administrador da organização.
-     */
     @Transactional
     public UsuarioResponseDTO register(
             RegisterRequestDTO req,
@@ -104,7 +106,7 @@ public class AuthService {
 
         String email = req.getEmail() == null
                 ? null
-                : req.getEmail().trim().toLowerCase();
+                : req.getEmail().trim().toLowerCase(Locale.ROOT);
 
         if (email == null || email.isBlank()) {
             throw new com.avantt_backend.exception.ApiException(
@@ -139,7 +141,6 @@ public class AuthService {
         Integer adminPerfilId = getOrCreatePerfilId("Administrador");
         u.setPerfilId(adminPerfilId);
 
-        // O administrador conclui o cadastro da organização normalmente.
         u.setPrimeiroAcessoValidado(true);
 
         Usuario saved = usuarioRepository.save(u);
@@ -155,9 +156,6 @@ public class AuthService {
         return toResponseDTO(saved);
     }
 
-    /**
-     * Localiza um perfil pelo nome ou cria caso não exista.
-     */
     private Integer getOrCreatePerfilId(String nome) {
 
         try {
@@ -183,9 +181,6 @@ public class AuthService {
         }
     }
 
-    /**
-     * Valida o token e retorna o usuário autenticado.
-     */
     @Transactional(readOnly = true)
     public Usuario obterUsuarioAutenticado(String token) {
 
@@ -208,7 +203,6 @@ public class AuthService {
                     "Token expirado. Faça login novamente.");
         }
 
-        // Impede o uso de tokens antigos enquanto o primeiro acesso estiver pendente.
         if (!Boolean.TRUE.equals(usuario.getPrimeiroAcessoValidado())) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
@@ -218,18 +212,12 @@ public class AuthService {
         return usuario;
     }
 
-    /**
-     * Valida e-mail e senha.
-     *
-     * Se o primeiro acesso estiver pendente, não cria token de sessão.
-     * Nesse caso, retorna requiresFirstAccessValidation = true.
-     */
     @Transactional
     public LoginResponseDTO login(AuthRequestDTO req) {
 
         String email = req.getEmail() == null
                 ? null
-                : req.getEmail().trim().toLowerCase();
+                : req.getEmail().trim().toLowerCase(Locale.ROOT);
 
         if (email == null || email.isBlank() || req.getPassword() == null) {
             return null;
@@ -250,7 +238,6 @@ public class AuthService {
 
         if (!Boolean.TRUE.equals(u.getPrimeiroAcessoValidado())) {
 
-            // Garante que uma sessão antiga não continue válida.
             u.setAuthToken(null);
             u.setAuthTokenExpiry(null);
 
@@ -294,13 +281,24 @@ public class AuthService {
         return true;
     }
 
+    /**
+     * Solicita a recuperação de senha.
+     * A resposta não revela se o e-mail está cadastrado.
+     */
     @Transactional
-    public String requestPasswordReset(PasswordResetRequestDTO req) {
+    public void requestPasswordReset(PasswordResetRequestDTO req) {
 
-        var opt = usuarioRepository.findByEmail(req.getEmail());
+        if (req == null || req.getEmail() == null
+                || req.getEmail().isBlank()) {
+            return;
+        }
+
+        String email = req.getEmail().trim().toLowerCase(Locale.ROOT);
+
+        var opt = usuarioRepository.findByEmail(email);
 
         if (opt.isEmpty()) {
-            return null;
+            return;
         }
 
         Usuario u = opt.get();
@@ -312,12 +310,38 @@ public class AuthService {
 
         usuarioRepository.save(u);
 
-        // Retorno mantido para testes e desenvolvimento.
-        return token;
+        String baseUrl = frontendUrl.endsWith("/")
+                ? frontendUrl.substring(0, frontendUrl.length() - 1)
+                : frontendUrl;
+
+        String link = UriComponentsBuilder
+                .fromUriString(baseUrl)
+                .queryParam("resetToken", token)
+                .build()
+                .toUriString();
+
+        emailService.enviarEmailRecuperacaoSenha(
+                email,
+                u.getNome(),
+                link
+        );
+
+        log.info("Solicitação de recuperação de senha processada para usuário cadastrado.");
     }
 
+    /**
+     * Confirma a redefinição da senha.
+     */
     @Transactional
     public boolean confirmPasswordReset(PasswordResetConfirmDTO req) {
+
+        if (req == null
+                || req.getToken() == null
+                || req.getToken().isBlank()
+                || req.getNewPassword() == null
+                || req.getNewPassword().isBlank()) {
+            return false;
+        }
 
         var opt = usuarioRepository.findByResetToken(req.getToken());
 
@@ -328,7 +352,7 @@ public class AuthService {
         Usuario u = opt.get();
 
         if (u.getResetTokenExpiry() == null
-                || u.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+                || !u.getResetTokenExpiry().isAfter(LocalDateTime.now())) {
             return false;
         }
 

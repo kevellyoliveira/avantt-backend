@@ -37,6 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @ExtendWith(MockitoExtension.class)
 class ProjetoControllerTest {
@@ -63,7 +64,6 @@ class ProjetoControllerTest {
 
     @BeforeEach
     void setup() {
-
         LocalValidatorFactoryBean validator =
                 new LocalValidatorFactoryBean();
 
@@ -76,7 +76,6 @@ class ProjetoControllerTest {
     }
 
     private void configurarAutenticacao() {
-
         Usuario usuario = new Usuario();
 
         usuario.setId(USUARIO_ID);
@@ -89,7 +88,6 @@ class ProjetoControllerTest {
     }
 
     private String criarJsonProjeto() {
-
         String start = LocalDate.now().plusDays(1).toString();
         String end = LocalDate.now().plusDays(21).toString();
 
@@ -110,7 +108,6 @@ class ProjetoControllerTest {
 
     @Test
     void postCreate_shouldReturn201() throws Exception {
-
         configurarAutenticacao();
 
         ProjetoResponseDTO resp = new ProjetoResponseDTO();
@@ -121,7 +118,8 @@ class ProjetoControllerTest {
 
         when(projetoService.create(
                 any(ProjetoRequestDTO.class),
-                eq(ORGANIZACAO_ID)
+                eq(ORGANIZACAO_ID),
+                eq(USUARIO_ID)
         )).thenReturn(resp);
 
         mockMvc.perform(post("/api/projetos")
@@ -136,13 +134,13 @@ class ProjetoControllerTest {
 
         verify(projetoService).create(
                 any(ProjetoRequestDTO.class),
-                eq(ORGANIZACAO_ID)
+                eq(ORGANIZACAO_ID),
+                eq(USUARIO_ID)
         );
     }
 
     @Test
     void postCreate_withoutAuthentication_shouldReturn401() throws Exception {
-
         mockMvc.perform(post("/api/projetos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(criarJsonProjeto()))
@@ -154,12 +152,12 @@ class ProjetoControllerTest {
 
     @Test
     void postCreate_businessConflict_shouldReturn409() throws Exception {
-
         configurarAutenticacao();
 
         when(projetoService.create(
                 any(ProjetoRequestDTO.class),
-                eq(ORGANIZACAO_ID)
+                eq(ORGANIZACAO_ID),
+                eq(USUARIO_ID)
         )).thenThrow(
                 new com.avantt_backend.exception.ConflictException("Conflito")
         );
@@ -175,7 +173,8 @@ class ProjetoControllerTest {
 
         verify(projetoService).create(
                 any(ProjetoRequestDTO.class),
-                eq(ORGANIZACAO_ID)
+                eq(ORGANIZACAO_ID),
+                eq(USUARIO_ID)
         );
     }
 
@@ -185,7 +184,6 @@ class ProjetoControllerTest {
 
     @Test
     void putUpdate_existing_shouldReturn200() throws Exception {
-
         configurarAutenticacao();
 
         ProjetoResponseDTO resp = new ProjetoResponseDTO();
@@ -224,7 +222,6 @@ class ProjetoControllerTest {
 
     @Test
     void putUpdate_withoutAuthentication_shouldReturn401() throws Exception {
-
         mockMvc.perform(put("/api/projetos/5")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Updated\"}"))
@@ -240,7 +237,6 @@ class ProjetoControllerTest {
 
     @Test
     void getById_existing_shouldReturn200() throws Exception {
-
         configurarAutenticacao();
 
         ProjetoResponseDTO resp = new ProjetoResponseDTO();
@@ -274,8 +270,7 @@ class ProjetoControllerTest {
     // ==========================================
 
     @Test
-    void getList_empty_shouldReturn404() throws Exception {
-
+    void getList_empty_shouldReturn200() throws Exception {
         configurarAutenticacao();
 
         when(projetoService.listarPorOrganizacaoOuMembro(
@@ -286,8 +281,8 @@ class ProjetoControllerTest {
         mockMvc.perform(get("/api/projetos")
                         .header("Authorization", AUTHORIZATION)
                         .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
 
         verify(authService).obterUsuarioAutenticado(TOKEN);
 
@@ -299,7 +294,6 @@ class ProjetoControllerTest {
 
     @Test
     void getList_withProjects_shouldReturn200() throws Exception {
-
         configurarAutenticacao();
 
         ProjetoResponseDTO projeto = new ProjetoResponseDTO();

@@ -167,7 +167,8 @@ class ControllersSmokeTest {
         when(authService.obterUsuarioAutenticado(token))
                 .thenReturn(usuarioAutenticado);
 
-        when(projetoService.create(req, organizacaoId))
+        // Agora o método recebe também o ID do usuário criador.
+        when(projetoService.create(req, organizacaoId, usuarioId))
                 .thenReturn(res);
 
         // Cadastro
@@ -179,7 +180,7 @@ class ControllersSmokeTest {
         assertEquals(201, r.getStatusCode().value());
 
         verify(authService).obterUsuarioAutenticado(token);
-        verify(projetoService).create(req, organizacaoId);
+        verify(projetoService).create(req, organizacaoId, usuarioId);
 
         // Listagem por organização ou membro
         when(projetoService.listarPorOrganizacaoOuMembro(

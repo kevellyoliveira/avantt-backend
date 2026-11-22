@@ -27,6 +27,12 @@ public class Projeto {
     @Column(name = "organizacao_id", nullable = false)
     private Integer organizacaoId;
 
+    @Column(name = "criado_por_id")
+    private Integer criadoPorId;
+
+    @Column(name = "aviso_prazo_enviado_para")
+    private LocalDate avisoPrazoEnviadoPara;
+
     @Column(name = "status")
     private String status;
 
@@ -88,6 +94,22 @@ public class Projeto {
 
     public void setOrganizacaoId(Integer organizacaoId) {
         this.organizacaoId = organizacaoId;
+    }
+
+    public Integer getCriadoPorId() {
+        return criadoPorId;
+    }
+
+    public void setCriadoPorId(Integer criadoPorId) {
+        this.criadoPorId = criadoPorId;
+    }
+
+    public LocalDate getAvisoPrazoEnviadoPara() {
+        return avisoPrazoEnviadoPara;
+    }
+
+    public void setAvisoPrazoEnviadoPara(LocalDate avisoPrazoEnviadoPara) {
+        this.avisoPrazoEnviadoPara = avisoPrazoEnviadoPara;
     }
 
     public String getStatus() {

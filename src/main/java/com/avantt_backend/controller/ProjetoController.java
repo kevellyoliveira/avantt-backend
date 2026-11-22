@@ -158,11 +158,12 @@ public class ProjetoController {
                     required = false
             ) String authorization) {
 
-        Integer organizacaoId = obterOrganizacaoId(authorization);
+        Usuario usuario = obterUsuarioAutenticado(authorization);
 
         ProjetoResponseDTO created = projetoService.create(
                 request,
-                organizacaoId
+                usuario.getOrganizacaoId(),
+                usuario.getId()
         );
 
         if (created == null) {
@@ -334,15 +335,6 @@ public class ProjetoController {
                     )
             ),
             @ApiResponse(
-                    responseCode = "404",
-                    description = "Nenhum projeto encontrado",
-                    content = @Content(
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class
-                            )
-                    )
-            ),
-            @ApiResponse(
                     responseCode = "500",
                     description = "Erro interno do servidor",
                     content = @Content(
@@ -356,7 +348,7 @@ public class ProjetoController {
             path = PROJETOS,
             produces = "application/json"
     )
-    public ResponseEntity<?> listProjetos(
+    public ResponseEntity<List<ProjetoResponseDTO>> listProjetos(
 
             @RequestHeader(
                     value = "Authorization",
@@ -371,12 +363,7 @@ public class ProjetoController {
                         usuario.getId()
                 );
 
-        if (list.isEmpty()) {
-            throw new com.avantt_backend.exception.ResourceNotFoundException(
-                    MENSAGEM_ERRO_LISTAR_PROJETOS_404
-            );
-        }
-
+        // Mesmo sem projetos cadastrados, retorna HTTP 200 com lista vazia.
         return ResponseEntity.ok(list);
     }
 
