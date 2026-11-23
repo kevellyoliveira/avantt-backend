@@ -1,3 +1,4 @@
+
 package com.avantt_backend.service;
 
 import com.avantt_backend.dto.SprintRequestDTO;
@@ -59,18 +60,22 @@ class SprintServiceTest {
     private SprintService sprintService;
 
     private SprintRequestDTO buildValidDto() {
+
         SprintRequestDTO dto = new SprintRequestDTO();
+
         dto.setProjectId(1);
         dto.setName("S1");
         dto.setStartDate(LocalDate.now());
         dto.setEndDate(LocalDate.now().plusDays(20));
         dto.setStatusId(1);
         dto.setTeam(List.of(2));
+
         return dto;
     }
 
     @Test
     void create_throwsWhenProjectNotFound() {
+
         SprintRequestDTO dto = new SprintRequestDTO();
         dto.setProjectId(99);
 
@@ -85,33 +90,56 @@ class SprintServiceTest {
 
     @Test
     void create_success_computesCountsAndProgress() {
+
         SprintRequestDTO dto = new SprintRequestDTO();
+
         dto.setProjectId(3);
         dto.setName("S1");
         dto.setStartDate(LocalDate.now().minusDays(5));
         dto.setEndDate(LocalDate.now().plusDays(15));
+        dto.setStatusId(1);
 
         Projeto projeto = new Projeto();
+
         projeto.setId(3);
         projeto.setName("P");
 
         when(projetoRepository.findById(3))
                 .thenReturn(Optional.of(projeto));
 
+        Status status = new Status();
+
+        status.setId(1);
+        status.setNome("Em andamento");
+
+        when(statusTarefaRepository.findById(1))
+                .thenReturn(Optional.of(status));
+
         Sprint saved = new Sprint();
+
         saved.setId(99);
+        saved.setProjetoId(3);
         saved.setNome("S1");
         saved.setDataInicio(dto.getStartDate());
         saved.setDataFim(dto.getEndDate());
+        saved.setStatusId(1);
 
         when(sprintRepository.save(any(Sprint.class)))
                 .thenReturn(saved);
 
-        when(tarefaRepository.countBySprintId(99)).thenReturn(10);
+        when(sprintRepository.findById(99))
+                .thenReturn(Optional.of(saved));
+
+        when(tarefaRepository.findBySprintId(99))
+                .thenReturn(List.of());
+
+        when(tarefaRepository.countBySprintId(99))
+                .thenReturn(10);
+
         when(tarefaRepository.countBySprintIdAndStatusName(99, "Done"))
                 .thenReturn(5);
 
-        var result = sprintService.create(dto);
+        SprintResponseDTO result = sprintService.create(dto);
 
         assertEquals(99, result.getId());
         assertEquals(10, result.getTotalTasks());
@@ -121,7 +149,9 @@ class SprintServiceTest {
 
     @Test
     void listAll_resolvesProjectNameAndCounts() {
+
         Sprint sprint = new Sprint();
+
         sprint.setId(1);
         sprint.setProjetoId(4);
         sprint.setNome("Sx");
@@ -131,15 +161,24 @@ class SprintServiceTest {
                 .thenReturn(List.of(sprint));
 
         Projeto projeto = new Projeto();
+
         projeto.setId(4);
         projeto.setName("Proj");
 
         when(projetoRepository.findById(4))
                 .thenReturn(Optional.of(projeto));
 
-        when(tarefaRepository.countBySprintId(1)).thenReturn(2);
+        when(tarefaRepository.findBySprintId(1))
+                .thenReturn(List.of());
+
+        when(tarefaRepository.countBySprintId(1))
+                .thenReturn(2);
+
         when(tarefaRepository.countBySprintIdAndStatusName(1, "Done"))
                 .thenReturn(1);
+
+        when(sprintUsuarioRepository.findByIdSprintId(1))
+                .thenReturn(List.of());
 
         when(projetoUsuarioRepository.findByIdProjetoId(4))
                 .thenReturn(List.of());
@@ -149,13 +188,17 @@ class SprintServiceTest {
         assertEquals(1, list.size());
         assertEquals("Proj", list.get(0).getProject());
         assertEquals(2, list.get(0).getTotalTasks());
+        assertEquals(1, list.get(0).getDoneTasks());
+        assertEquals(50, list.get(0).getProgress());
     }
 
     @Test
     void create_withValidData_savesAndAssociatesTeam() {
+
         SprintRequestDTO dto = buildValidDto();
 
         Projeto projeto = new Projeto();
+
         projeto.setId(1);
         projeto.setName("P");
         projeto.setStartDate(LocalDate.now());
@@ -165,6 +208,7 @@ class SprintServiceTest {
                 .thenReturn(Optional.of(projeto));
 
         Status status = new Status();
+
         status.setId(1);
         status.setNome("Em andamento");
 
@@ -172,12 +216,22 @@ class SprintServiceTest {
                 .thenReturn(Optional.of(status));
 
         Sprint saved = new Sprint();
+
         saved.setId(10);
         saved.setProjetoId(1);
         saved.setNome(dto.getName());
+        saved.setDataInicio(dto.getStartDate());
+        saved.setDataFim(dto.getEndDate());
+        saved.setStatusId(1);
 
         when(sprintRepository.save(any(Sprint.class)))
                 .thenReturn(saved);
+
+        when(sprintRepository.findById(10))
+                .thenReturn(Optional.of(saved));
+
+        when(tarefaRepository.findBySprintId(10))
+                .thenReturn(List.of());
 
         com.avantt_backend.entity.ProjetoUsuario projetoUsuario =
                 new com.avantt_backend.entity.ProjetoUsuario();
@@ -206,16 +260,21 @@ class SprintServiceTest {
         assertNotNull(result);
         assertEquals(10, result.getId());
 
-        verify(sprintRepository).save(any(Sprint.class));
+        // O serviço salva a sprint na criação e novamente ao recalcular o progresso.
+        verify(sprintRepository, times(2)).save(any(Sprint.class));
+
         verify(sprintUsuarioRepository).save(any());
     }
 
     @Test
     void create_startBeforeProjectStart_throwsApiException() {
+
         SprintRequestDTO dto = buildValidDto();
+
         dto.setStartDate(LocalDate.now().minusDays(5));
 
         Projeto projeto = new Projeto();
+
         projeto.setId(1);
         projeto.setStartDate(LocalDate.now());
         projeto.setEndDate(LocalDate.now().plusDays(100));
@@ -233,10 +292,13 @@ class SprintServiceTest {
 
     @Test
     void create_endDateTooShort_throwsApiException() {
+
         SprintRequestDTO dto = buildValidDto();
+
         dto.setEndDate(dto.getStartDate().plusDays(10));
 
         Projeto projeto = new Projeto();
+
         projeto.setId(1);
         projeto.setStartDate(LocalDate.now());
         projeto.setEndDate(LocalDate.now().plusDays(100));
@@ -254,6 +316,7 @@ class SprintServiceTest {
 
     @Test
     void update_nonExisting_throwsNotFound() {
+
         SprintRequestDTO dto = buildValidDto();
 
         when(sprintRepository.findById(99))
@@ -269,7 +332,9 @@ class SprintServiceTest {
 
     @Test
     void update_addTeam_userNotFound_throwsApiException() {
+
         Sprint sprint = new Sprint();
+
         sprint.setId(5);
         sprint.setProjetoId(2);
         sprint.setDataInicio(LocalDate.now());
@@ -279,6 +344,7 @@ class SprintServiceTest {
                 .thenReturn(Optional.of(sprint));
 
         Projeto projeto = new Projeto();
+
         projeto.setId(2);
         projeto.setName("P");
         projeto.setStartDate(LocalDate.now());
@@ -288,13 +354,17 @@ class SprintServiceTest {
                 .thenReturn(Optional.of(projeto));
 
         SprintRequestDTO dto = new SprintRequestDTO();
+
         dto.setAddTeam(List.of(99));
 
-        when(usuarioRepository.findById(99))
-                .thenReturn(Optional.empty());
+        when(sprintRepository.save(any(Sprint.class)))
+                .thenReturn(sprint);
 
         when(projetoUsuarioRepository.findByIdProjetoId(2))
                 .thenReturn(List.of());
+
+        when(usuarioRepository.findById(99))
+                .thenReturn(Optional.empty());
 
         ApiException ex = assertThrows(
                 ApiException.class,
@@ -306,7 +376,9 @@ class SprintServiceTest {
 
     @Test
     void update_removeTeam_whenAssigned_throwsApiException() {
+
         Sprint sprint = new Sprint();
+
         sprint.setId(7);
         sprint.setProjetoId(3);
         sprint.setDataInicio(LocalDate.now());
@@ -316,6 +388,7 @@ class SprintServiceTest {
                 .thenReturn(Optional.of(sprint));
 
         Projeto projeto = new Projeto();
+
         projeto.setId(3);
         projeto.setStartDate(LocalDate.now());
         projeto.setEndDate(LocalDate.now().plusDays(100));
@@ -324,7 +397,11 @@ class SprintServiceTest {
                 .thenReturn(Optional.of(projeto));
 
         SprintRequestDTO dto = new SprintRequestDTO();
+
         dto.setRemoveTeam(List.of(3));
+
+        when(sprintRepository.save(any(Sprint.class)))
+                .thenReturn(sprint);
 
         when(sprintUsuarioRepository.existsById(
                 new com.avantt_backend.entity.SprintUsuarioId(7, 3)

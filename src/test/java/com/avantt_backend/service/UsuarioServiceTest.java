@@ -8,13 +8,17 @@ import com.avantt_backend.exception.ConflictException;
 import com.avantt_backend.exception.ResourceNotFoundException;
 import com.avantt_backend.repository.ExistenceRepository;
 import com.avantt_backend.repository.UsuarioRepository;
+
 import jakarta.persistence.EntityManager;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -27,6 +31,8 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UsuarioServiceTest {
+
+    private static final Integer ORGANIZACAO_ID = 1;
 
     @Mock
     private UsuarioRepository usuarioRepository;
@@ -55,11 +61,13 @@ class UsuarioServiceTest {
         dto.setEmail(email);
         dto.setPerfilId(perfilId);
         dto.setRole("Colaborador");
+
         return dto;
     }
 
     @Test
     void create_withDuplicateEmail_throwsConflict() {
+
         UsuarioRequestDTO dto =
                 buildRequest("Ana", "ana@example.com", 1);
 
@@ -68,15 +76,17 @@ class UsuarioServiceTest {
 
         assertThrows(
                 ConflictException.class,
-                () -> usuarioService.create(dto)
+                () -> usuarioService.create(dto, ORGANIZACAO_ID)
         );
 
         verify(usuarioRepository).existsByEmail(dto.getEmail());
         verifyNoInteractions(existenceRepository);
+        verify(usuarioRepository, never()).save(any(Usuario.class));
     }
 
     @Test
     void create_withValidData_savesAndReturnsDto() {
+
         UsuarioRequestDTO dto =
                 buildRequest("Bruno Lima", "bruno@example.com", 2);
 
@@ -89,11 +99,14 @@ class UsuarioServiceTest {
         when(usuarioRepository.save(any(Usuario.class)))
                 .thenAnswer(invocation -> {
                     Usuario usuario = invocation.getArgument(0);
+
                     usuario.setId(1);
+
                     return usuario;
                 });
 
-        UsuarioResponseDTO res = usuarioService.create(dto);
+        UsuarioResponseDTO res =
+                usuarioService.create(dto, ORGANIZACAO_ID);
 
         assertNotNull(res);
         assertEquals("1", res.getId());
@@ -106,13 +119,20 @@ class UsuarioServiceTest {
 
         verify(usuarioRepository).existsByEmail(dto.getEmail());
         verify(existenceRepository).existsPerfilById(dto.getPerfilId());
-        verify(usuarioRepository).save(any(Usuario.class));
+
+        verify(usuarioRepository).save(argThat(usuario ->
+                ORGANIZACAO_ID.equals(usuario.getOrganizacaoId())
+                        && "Bruno Lima".equals(usuario.getNome())
+                        && "bruno@example.com".equals(usuario.getEmail())
+        ));
+
         verify(em).flush();
         verify(em).refresh(any(Usuario.class));
     }
 
     @Test
     void create_withMissingPerfil_throwsNotFound() {
+
         UsuarioRequestDTO dto =
                 buildRequest("Carlos", "carlos@example.com", 99);
 
@@ -124,17 +144,36 @@ class UsuarioServiceTest {
 
         ResponseStatusException ex = assertThrows(
                 ResponseStatusException.class,
-                () -> usuarioService.create(dto)
+                () -> usuarioService.create(dto, ORGANIZACAO_ID)
         );
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
 
         verify(usuarioRepository).existsByEmail(dto.getEmail());
         verify(existenceRepository).existsPerfilById(dto.getPerfilId());
+        verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+
+    @Test
+    void create_withoutOrganization_throwsBadRequest() {
+
+        UsuarioRequestDTO dto =
+                buildRequest("Carlos", "carlos@example.com", 2);
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> usuarioService.create(dto, null)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+
+        verifyNoInteractions(usuarioRepository);
+        verifyNoInteractions(existenceRepository);
     }
 
     @Test
     void update_existingUser_updatesAndReturnsDto() {
+
         Usuario existing = new Usuario();
         existing.setId(5);
         existing.setNome("Marcia");
@@ -166,6 +205,7 @@ class UsuarioServiceTest {
 
     @Test
     void update_nonExistingUser_throwsNotFound() {
+
         when(usuarioRepository.findById(99))
                 .thenReturn(Optional.empty());
 
@@ -181,6 +221,7 @@ class UsuarioServiceTest {
 
     @Test
     void update_changeEmailToExisting_throwsConflict() {
+
         Usuario existing = new Usuario();
         existing.setId(7);
         existing.setNome("Pedro");
@@ -202,10 +243,12 @@ class UsuarioServiceTest {
 
         verify(usuarioRepository).findById(7);
         verify(usuarioRepository).existsByEmail(dto.getEmail());
+        verify(usuarioRepository, never()).save(any(Usuario.class));
     }
 
     @Test
     void update_success_changesFields() {
+
         Usuario existing = new Usuario();
         existing.setId(2);
         existing.setNome("Old Name");

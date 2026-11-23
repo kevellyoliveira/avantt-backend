@@ -1,3 +1,4 @@
+
 package com.avantt_backend.service;
 
 import com.avantt_backend.dto.AuthRequestDTO;
@@ -6,18 +7,24 @@ import com.avantt_backend.dto.PasswordResetRequestDTO;
 import com.avantt_backend.dto.RegisterRequestDTO;
 import com.avantt_backend.entity.Usuario;
 import com.avantt_backend.repository.UsuarioRepository;
+import com.avantt_backend.repository.PerfilRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,43 +33,71 @@ class AuthServiceTest {
     @Mock
     UsuarioRepository usuarioRepository;
 
+    @Mock
+    PerfilRepository perfilRepository;
+
+    @Mock
+    EmailService emailService;
+
     @InjectMocks
     AuthService authService;
 
     @BeforeEach
     void setup() {
-        // nothing
+        ReflectionTestUtils.setField(
+                authService,
+                "frontendUrl",
+                "http://localhost:8443"
+        );
     }
 
     @Test
     void register_returnsNullWhenEmailExists() {
-        when(usuarioRepository.existsByEmail("a@b.com")).thenReturn(true);
+
+        when(usuarioRepository.existsByEmail("a@b.com"))
+                .thenReturn(true);
+
         RegisterRequestDTO req = new RegisterRequestDTO();
         req.setEmail("a@b.com");
         req.setName("A");
         req.setPassword("pw");
+
         var res = authService.register(req);
+
         assertNull(res);
+
+        verify(usuarioRepository).existsByEmail("a@b.com");
+        verifyNoInteractions(emailService);
     }
 
     @Test
     void login_successAndFailure() {
+
         Usuario u = new Usuario();
+
         u.setId(5);
         u.setNome("User");
         u.setEmail("u@e.com");
-        // set encoded password using BCrypt to match
-        org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder enc = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+
+        // Usuário já concluiu a validação do primeiro acesso.
+        u.setPrimeiroAcessoValidado(true);
+
+        BCryptPasswordEncoder enc = new BCryptPasswordEncoder();
+
         u.setSenha(enc.encode("secret"));
 
-        when(usuarioRepository.findByEmail("u@e.com")).thenReturn(Optional.of(u));
-        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usuarioRepository.findByEmail("u@e.com"))
+                .thenReturn(Optional.of(u));
+
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         AuthRequestDTO good = new AuthRequestDTO();
         good.setEmail("u@e.com");
         good.setPassword("secret");
 
         var res = authService.login(good);
+
         assertNotNull(res);
         assertNotNull(res.getToken());
         assertEquals("User", res.getUser().getName());
@@ -70,42 +105,282 @@ class AuthServiceTest {
         AuthRequestDTO bad = new AuthRequestDTO();
         bad.setEmail("u@e.com");
         bad.setPassword("wrong");
+
         assertNull(authService.login(bad));
     }
 
     @Test
-    void logout_andPasswordResetFlow() {
+    void logout_deveLimparTokenDeAutenticacao() {
+
         Usuario u = new Usuario();
+
         u.setId(7);
         u.setEmail("x@y.com");
         u.setAuthToken("tok123");
 
-        when(usuarioRepository.findByAuthToken("tok123")).thenReturn(Optional.of(u));
-        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usuarioRepository.findByAuthToken("tok123"))
+                .thenReturn(Optional.of(u));
+
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         assertTrue(authService.logout("tok123"));
 
-        // request password reset
-        Usuario u2 = new Usuario();
-        u2.setId(8);
-        u2.setEmail("reset@e.com");
-        when(usuarioRepository.findByEmail("reset@e.com")).thenReturn(Optional.of(u2));
+        assertNull(u.getAuthToken());
 
-        PasswordResetRequestDTO pr = new PasswordResetRequestDTO();
-        pr.setEmail("reset@e.com");
-        String token = authService.requestPasswordReset(pr);
-        assertNotNull(token);
+        verify(usuarioRepository).save(u);
+    }
 
-        // confirm with expired token -> should fail
-        Usuario u3 = new Usuario();
-        u3.setId(9);
-        u3.setResetToken("t1");
-        u3.setResetTokenExpiry(LocalDateTime.now().minusHours(1));
-        when(usuarioRepository.findByResetToken("t1")).thenReturn(Optional.of(u3));
+    @Test
+    void requestPasswordReset_deveGerarTokenEEnviarEmail() {
 
-        PasswordResetConfirmDTO confirm = new PasswordResetConfirmDTO();
-        confirm.setToken("t1");
-        confirm.setNewPassword("newpass");
-        assertFalse(authService.confirmPasswordReset(confirm));
+        Usuario usuario = new Usuario();
+
+        usuario.setId(8);
+        usuario.setNome("Usuario Teste");
+        usuario.setEmail("reset@e.com");
+
+        when(usuarioRepository.findByEmail("reset@e.com"))
+                .thenReturn(Optional.of(usuario));
+
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PasswordResetRequestDTO request =
+                new PasswordResetRequestDTO();
+
+        request.setEmail("reset@e.com");
+
+        authService.requestPasswordReset(request);
+
+        assertNotNull(usuario.getResetToken());
+        assertNotNull(usuario.getResetTokenExpiry());
+
+        assertTrue(
+                usuario.getResetTokenExpiry().isAfter(LocalDateTime.now())
+        );
+
+        assertTrue(
+                usuario.getResetTokenExpiry().isBefore(
+                        LocalDateTime.now().plusHours(2).plusSeconds(5)
+                )
+        );
+
+        verify(usuarioRepository).save(usuario);
+
+        verify(emailService).enviarEmailRecuperacaoSenha(
+                eq("reset@e.com"),
+                eq("Usuario Teste"),
+                contains("resetToken=")
+        );
+
+        verify(emailService, times(1))
+                .enviarEmailRecuperacaoSenha(
+                        anyString(),
+                        anyString(),
+                        anyString()
+                );
+    }
+
+    @Test
+    void requestPasswordReset_naoDeveEnviarEmailQuandoUsuarioNaoExiste() {
+
+        when(usuarioRepository.findByEmail("inexistente@e.com"))
+                .thenReturn(Optional.empty());
+
+        PasswordResetRequestDTO request =
+                new PasswordResetRequestDTO();
+
+        request.setEmail("inexistente@e.com");
+
+        assertDoesNotThrow(
+                () -> authService.requestPasswordReset(request)
+        );
+
+        verify(usuarioRepository, never()).save(any(Usuario.class));
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void requestPasswordReset_naoDeveProcessarEmailVazio() {
+
+        PasswordResetRequestDTO request =
+                new PasswordResetRequestDTO();
+
+        request.setEmail(" ");
+
+        assertDoesNotThrow(
+                () -> authService.requestPasswordReset(request)
+        );
+
+        verifyNoInteractions(usuarioRepository);
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void requestPasswordReset_naoDeveProcessarRequisicaoNula() {
+
+        assertDoesNotThrow(
+                () -> authService.requestPasswordReset(null)
+        );
+
+        verifyNoInteractions(usuarioRepository);
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void confirmPasswordReset_deveAlterarSenhaEInvalidarToken() {
+
+        Usuario usuario = new Usuario();
+
+        usuario.setId(9);
+        usuario.setNome("Usuario Teste");
+        usuario.setEmail("reset@e.com");
+        usuario.setResetToken("token-valido");
+        usuario.setResetTokenExpiry(
+                LocalDateTime.now().plusHours(1)
+        );
+
+        when(usuarioRepository.findByResetToken("token-valido"))
+                .thenReturn(Optional.of(usuario));
+
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PasswordResetConfirmDTO confirm =
+                new PasswordResetConfirmDTO();
+
+        confirm.setToken("token-valido");
+        confirm.setNewPassword("novaSenha123");
+
+        boolean resultado =
+                authService.confirmPasswordReset(confirm);
+
+        assertTrue(resultado);
+
+        assertNull(usuario.getResetToken());
+        assertNull(usuario.getResetTokenExpiry());
+
+        BCryptPasswordEncoder encoder =
+                new BCryptPasswordEncoder();
+
+        assertTrue(
+                encoder.matches(
+                        "novaSenha123",
+                        usuario.getSenha()
+                )
+        );
+
+        verify(usuarioRepository).save(usuario);
+    }
+
+    @Test
+    void confirmPasswordReset_deveRejeitarTokenExpirado() {
+
+        Usuario usuario = new Usuario();
+
+        usuario.setId(10);
+        usuario.setResetToken("token-expirado");
+        usuario.setResetTokenExpiry(
+                LocalDateTime.now().minusHours(1)
+        );
+
+        when(usuarioRepository.findByResetToken("token-expirado"))
+                .thenReturn(Optional.of(usuario));
+
+        PasswordResetConfirmDTO confirm =
+                new PasswordResetConfirmDTO();
+
+        confirm.setToken("token-expirado");
+        confirm.setNewPassword("novaSenha123");
+
+        boolean resultado =
+                authService.confirmPasswordReset(confirm);
+
+        assertFalse(resultado);
+
+        verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+
+    @Test
+    void confirmPasswordReset_deveRejeitarTokenInexistente() {
+
+        when(usuarioRepository.findByResetToken("token-invalido"))
+                .thenReturn(Optional.empty());
+
+        PasswordResetConfirmDTO confirm =
+                new PasswordResetConfirmDTO();
+
+        confirm.setToken("token-invalido");
+        confirm.setNewPassword("novaSenha123");
+
+        boolean resultado =
+                authService.confirmPasswordReset(confirm);
+
+        assertFalse(resultado);
+
+        verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+
+    @Test
+    void confirmPasswordReset_deveRejeitarTokenNulo() {
+
+        PasswordResetConfirmDTO confirm =
+                new PasswordResetConfirmDTO();
+
+        confirm.setToken(null);
+        confirm.setNewPassword("novaSenha123");
+
+        boolean resultado =
+                authService.confirmPasswordReset(confirm);
+
+        assertFalse(resultado);
+
+        verifyNoInteractions(usuarioRepository);
+    }
+
+    @Test
+    void confirmPasswordReset_deveRejeitarTokenVazio() {
+
+        PasswordResetConfirmDTO confirm =
+                new PasswordResetConfirmDTO();
+
+        confirm.setToken(" ");
+        confirm.setNewPassword("novaSenha123");
+
+        boolean resultado =
+                authService.confirmPasswordReset(confirm);
+
+        assertFalse(resultado);
+
+        verifyNoInteractions(usuarioRepository);
+    }
+
+    @Test
+    void confirmPasswordReset_deveRejeitarSenhaVazia() {
+
+        PasswordResetConfirmDTO confirm =
+                new PasswordResetConfirmDTO();
+
+        confirm.setToken("token-valido");
+        confirm.setNewPassword(" ");
+
+        boolean resultado =
+                authService.confirmPasswordReset(confirm);
+
+        assertFalse(resultado);
+
+        verifyNoInteractions(usuarioRepository);
+    }
+
+    @Test
+    void confirmPasswordReset_deveRejeitarRequisicaoNula() {
+
+        boolean resultado =
+                authService.confirmPasswordReset(null);
+
+        assertFalse(resultado);
+
+        verifyNoInteractions(usuarioRepository);
     }
 }

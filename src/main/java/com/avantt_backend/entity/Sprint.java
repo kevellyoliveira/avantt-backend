@@ -1,3 +1,4 @@
+
 package com.avantt_backend.entity;
 
 import jakarta.persistence.*;
@@ -6,6 +7,7 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "sprint")
 public class Sprint {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -22,36 +24,69 @@ public class Sprint {
     @Column(name = "data_fim")
     private LocalDate dataFim;
 
-    @Column(name = "status_id")
+    // Não existe status_id na tabela sprint.
+    // Mantido apenas para compatibilidade com o código.
+    @Transient
     private Integer statusId;
-    
+
     @Column(name = "progresso")
-    // Progresso da sprint (0..100). Calculado pela regra:
-    // - Contagem de tarefas concluídas / contagem de tarefas (excluindo as canceladas), arredondado para inteiro.
-    // - Atualizado por recalculateAndPersistProgress(...) em SprintService e exposto em SprintResponseDTO.progress.
     private Integer progresso;
 
     public Sprint() {}
 
-    // getters and setters
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
+    public Integer getId() {
+        return id;
+    }
 
-    public Integer getProjetoId() { return projetoId; }
-    public void setProjetoId(Integer projetoId) { this.projetoId = projetoId; }
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
-    public String getNome() { return nome; }
-    public void setNome(String nome) { this.nome = nome; }
+    public Integer getProjetoId() {
+        return projetoId;
+    }
 
-    public LocalDate getDataInicio() { return dataInicio; }
-    public void setDataInicio(LocalDate dataInicio) { this.dataInicio = dataInicio; }
+    public void setProjetoId(Integer projetoId) {
+        this.projetoId = projetoId;
+    }
 
-    public LocalDate getDataFim() { return dataFim; }
-    public void setDataFim(LocalDate dataFim) { this.dataFim = dataFim; }
+    public String getNome() {
+        return nome;
+    }
 
-    public Integer getStatusId() { return statusId; }
-    public void setStatusId(Integer statusId) { this.statusId = statusId; }
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
 
-    public Integer getProgresso() { return progresso; }
-    public void setProgresso(Integer progresso) { this.progresso = progresso; }
+    public LocalDate getDataInicio() {
+        return dataInicio;
+    }
+
+    public void setDataInicio(LocalDate dataInicio) {
+        this.dataInicio = dataInicio;
+    }
+
+    public LocalDate getDataFim() {
+        return dataFim;
+    }
+
+    public void setDataFim(LocalDate dataFim) {
+        this.dataFim = dataFim;
+    }
+
+    public Integer getStatusId() {
+        return statusId;
+    }
+
+    public void setStatusId(Integer statusId) {
+        this.statusId = statusId;
+    }
+
+    public Integer getProgresso() {
+        return progresso;
+    }
+
+    public void setProgresso(Integer progresso) {
+        this.progresso = progresso;
+    }
 }
