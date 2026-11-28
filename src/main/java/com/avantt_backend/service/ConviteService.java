@@ -3,7 +3,9 @@ package com.avantt_backend.service;
 
 import com.avantt_backend.dto.AceitarConviteRequestDTO;
 import com.avantt_backend.dto.AuthResponseDTO;
+import com.avantt_backend.entity.Perfil;
 import com.avantt_backend.entity.Usuario;
+import com.avantt_backend.repository.PerfilRepository;
 import com.avantt_backend.repository.UsuarioRepository;
 
 import java.nio.charset.StandardCharsets;
@@ -25,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class ConviteService {
 
     private final UsuarioRepository usuarioRepository;
+    private final PerfilRepository perfilRepository;
     private final EmailService emailService;
 
     private final SecureRandom secureRandom = new SecureRandom();
@@ -34,9 +37,11 @@ public class ConviteService {
 
     public ConviteService(
             UsuarioRepository usuarioRepository,
+            PerfilRepository perfilRepository,
             EmailService emailService) {
 
         this.usuarioRepository = usuarioRepository;
+        this.perfilRepository = perfilRepository;
         this.emailService = emailService;
     }
 
@@ -90,7 +95,8 @@ public class ConviteService {
 
         String mensagem =
                 "Olá, " + usuario.getNome() + "!\n\n"
-                        + "Você foi vinculado a um projeto na plataforma AVANTT.\n\n"
+                        + "Você recebeu um convite para concluir seu primeiro acesso "
+                        + "à plataforma AVANTT.\n\n"
                         + "Para confirmar seu primeiro acesso, informe o código abaixo "
                         + "na tela de validação após fazer login:\n\n"
                         + "Código: " + codigo + "\n\n"
@@ -184,6 +190,7 @@ public class ConviteService {
             );
         }
 
+        preencherPapelPeloPerfil(usuario);
         usuario.setPrimeiroAcessoValidado(true);
 
         // O código é invalidado após o uso.
@@ -198,6 +205,21 @@ public class ConviteService {
         Usuario usuarioSalvo = usuarioRepository.save(usuario);
 
         return new AuthResponseDTO(authToken, usuarioSalvo);
+    }
+
+    private void preencherPapelPeloPerfil(Usuario usuario) {
+        if (usuario.getPapel() != null && !usuario.getPapel().isBlank()) {
+            return;
+        }
+
+        if (usuario.getPerfilId() == null) {
+            return;
+        }
+
+        perfilRepository.findById(usuario.getPerfilId())
+                .map(Perfil::getNome)
+                .flatMap(PerfilRoleMapper::fromProfileName)
+                .ifPresent(usuario::setPapel);
     }
 
     /**

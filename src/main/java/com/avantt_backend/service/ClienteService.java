@@ -27,11 +27,14 @@ public class ClienteService {
     }
 
     @Transactional
-    public ClienteResponseDTO create(ClienteRequestDTO dto) {
+    public ClienteResponseDTO create(
+            ClienteRequestDTO dto,
+            Integer organizacaoId) {
 
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             throw new com.avantt_backend.exception.ApiException("name é obrigatório");
         }
+        validarOrganizacao(organizacaoId);
 
         Cliente e = new Cliente();
 
@@ -40,8 +43,7 @@ public class ClienteService {
         e.setTelefone(dto.getPhone());
         e.setDocumento(dto.getDocument());
 
-        // Mantido o comportamento original de organização padrão.
-        e.setOrganizacaoId(1);
+        e.setOrganizacaoId(organizacaoId);
 
         e.setIsAtivo(
                 dto.getIsAtivo() == null ? Boolean.TRUE : dto.getIsAtivo()
@@ -82,9 +84,13 @@ public class ClienteService {
     }
 
     @Transactional
-    public ClienteResponseDTO update(Integer id, ClienteRequestDTO dto) {
+    public ClienteResponseDTO update(
+            Integer id,
+            ClienteRequestDTO dto,
+            Integer organizacaoId) {
 
-        var opt = clienteRepository.findById(id);
+        validarOrganizacao(organizacaoId);
+        var opt = clienteRepository.findByIdAndOrganizacaoId(id, organizacaoId);
 
         if (opt.isEmpty()) {
             throw new ResourceNotFoundException("Cliente não encontrado");
@@ -144,15 +150,17 @@ public class ClienteService {
         return resp;
     }
 
-    public List<ClienteResponseDTO> listAll() {
-        return clienteRepository.findAll()
+    public List<ClienteResponseDTO> listAll(Integer organizacaoId) {
+        validarOrganizacao(organizacaoId);
+        return clienteRepository.findByOrganizacaoId(organizacaoId)
                 .stream()
                 .map(this::toDto)
                 .toList();
     }
 
-    public ClienteResponseDTO getById(Integer id) {
-        return clienteRepository.findById(id)
+    public ClienteResponseDTO getById(Integer id, Integer organizacaoId) {
+        validarOrganizacao(organizacaoId);
+        return clienteRepository.findByIdAndOrganizacaoId(id, organizacaoId)
                 .map(this::toDto)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
@@ -162,9 +170,10 @@ public class ClienteService {
     }
 
     @Transactional
-    public void delete(Integer id) {
+    public void delete(Integer id, Integer organizacaoId) {
 
-        var opt = clienteRepository.findById(id);
+        validarOrganizacao(organizacaoId);
+        var opt = clienteRepository.findByIdAndOrganizacaoId(id, organizacaoId);
 
         if (opt.isEmpty()) {
             throw new ResourceNotFoundException("Cliente não encontrado");
@@ -184,7 +193,7 @@ public class ClienteService {
 
         ClienteResponseDTO r = new ClienteResponseDTO();
 
-        r.setId(o.getId() == null ? null : String.valueOf(o.getId()));
+        r.setId(o.getId());
         r.setName(o.getNome());
         r.setEmail(o.getEmail());
         r.setPhone(o.getTelefone());
@@ -196,5 +205,13 @@ public class ClienteService {
         r.setDefaultUser(null);
 
         return r;
+    }
+
+    private void validarOrganizacao(Integer organizacaoId) {
+        if (organizacaoId == null) {
+            throw new com.avantt_backend.exception.ApiException(
+                    "A organização do usuário autenticado não foi identificada."
+            );
+        }
     }
 }

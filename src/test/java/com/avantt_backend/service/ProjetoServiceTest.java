@@ -6,6 +6,8 @@ import com.avantt_backend.dto.ProjetoRequestDTO;
 import com.avantt_backend.dto.ProjetoResponseDTO;
 import com.avantt_backend.dto.SprintResponseDTO;
 import com.avantt_backend.dto.TarefaResponseDTO;
+import com.avantt_backend.entity.Cliente;
+import com.avantt_backend.entity.Perfil;
 import com.avantt_backend.entity.Projeto;
 import com.avantt_backend.entity.ProjetoMarco;
 import com.avantt_backend.entity.ProjetoUsuario;
@@ -14,6 +16,7 @@ import com.avantt_backend.entity.Usuario;
 import com.avantt_backend.exception.ApiException;
 import com.avantt_backend.repository.ClienteRepository;
 import com.avantt_backend.repository.OrganizacaoRepository;
+import com.avantt_backend.repository.PerfilRepository;
 import com.avantt_backend.repository.ProjetoMarcoRepository;
 import com.avantt_backend.repository.ProjetoRepository;
 import com.avantt_backend.repository.ProjetoRiscoRepository;
@@ -30,6 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,6 +53,9 @@ class ProjetoServiceTest {
 
     @Mock
     private OrganizacaoRepository organizacaoRepository;
+
+    @Mock
+    private PerfilRepository perfilRepository;
 
     @Mock
     private ClienteRepository clienteRepository;
@@ -76,12 +83,87 @@ class ProjetoServiceTest {
     private ProjetoService projetoService;
 
     @Test
+    void listarPorOrganizacaoOuMembro_returnsEmptyListWhenOrganizationHasNoProjects() {
+        Usuario usuario = new Usuario();
+        usuario.setId(10);
+        usuario.setOrganizacaoId(1);
+        usuario.setPerfilId(2);
+
+        Perfil perfil = new Perfil();
+        perfil.setId(2);
+        perfil.setNome("Administrador");
+
+        when(usuarioRepository.findById(10))
+                .thenReturn(Optional.of(usuario));
+        when(perfilRepository.findById(2))
+                .thenReturn(Optional.of(perfil));
+        when(projetoRepository.findAll())
+                .thenReturn(List.of());
+
+        List<ProjetoResponseDTO> projetos =
+                projetoService.listarPorOrganizacaoOuMembro(1, 10);
+
+        assertNotNull(projetos);
+        assertTrue(projetos.isEmpty());
+    }
+
+    @Test
+    void listarIdsPorOrganizacaoOuMembro_returnsOnlyOrganizationProjectIds() {
+        Usuario usuario = new Usuario();
+        usuario.setId(10);
+        usuario.setOrganizacaoId(1);
+        usuario.setPerfilId(2);
+        when(usuarioRepository.findById(10)).thenReturn(Optional.of(usuario));
+
+        Perfil perfil = new Perfil();
+        perfil.setId(2);
+        perfil.setNome("Administrador");
+        when(perfilRepository.findById(2)).thenReturn(Optional.of(perfil));
+
+        Projeto projetoDaOrganizacao = new Projeto();
+        projetoDaOrganizacao.setId(31);
+        projetoDaOrganizacao.setOrganizacaoId(1);
+        Projeto projetoDeOutraOrganizacao = new Projeto();
+        projetoDeOutraOrganizacao.setId(32);
+        projetoDeOutraOrganizacao.setOrganizacaoId(2);
+        when(projetoRepository.findAll())
+                .thenReturn(List.of(projetoDaOrganizacao, projetoDeOutraOrganizacao));
+
+        List<Integer> ids =
+                projetoService.listarIdsPorOrganizacaoOuMembro(1, 10);
+
+        assertEquals(List.of(31), ids);
+    }
+
+    @Test
+    void create_rejectsClientFromAnotherOrganization() {
+        ProjetoRequestDTO dto = new ProjetoRequestDTO();
+        dto.setName("Projeto");
+        dto.setStatus("Planejada");
+        dto.setClienteId(55);
+        when(clienteRepository.existsByIdAndOrganizacaoId(55, 1))
+                .thenReturn(false);
+
+        assertThrows(
+                ResponseStatusException.class,
+                () -> projetoService.create(dto, 1, 10)
+        );
+
+        verify(projetoRepository, never()).save(any(Projeto.class));
+    }
+
+    @Test
     void create_success_withTeamAndMilestones() {
 
         Integer organizacaoId = 1;
 
         when(organizacaoRepository.existsById(organizacaoId))
                 .thenReturn(true);
+
+        Cliente cliente = new Cliente();
+        cliente.setId(5);
+        cliente.setNome("Claro");
+        cliente.setOrganizacaoId(organizacaoId);
 
         ProjetoRequestDTO dto = new ProjetoRequestDTO();
         dto.setName("P1");
@@ -91,6 +173,12 @@ class ProjetoServiceTest {
         dto.setStartDate(LocalDate.now());
         dto.setEndDate(LocalDate.now().plusDays(20));
         dto.setTeam(List.of(10, 11));
+        dto.setClienteId(5);
+
+        when(clienteRepository.existsByIdAndOrganizacaoId(5, organizacaoId))
+                .thenReturn(true);
+        when(clienteRepository.findByIdAndOrganizacaoId(5, organizacaoId))
+                .thenReturn(Optional.of(cliente));
 
         ProjetoMarcoDTO marcoDTO = new ProjetoMarcoDTO();
         marcoDTO.setName("Primeiro marco");
@@ -160,6 +248,8 @@ class ProjetoServiceTest {
         assertEquals("100", out.getId());
         assertEquals("P1", out.getName());
         assertEquals("Planejada", out.getStatus());
+        assertEquals(5, out.getClienteId());
+        assertEquals("Claro", out.getClientName());
 
         verify(projetoUsuarioRepository, times(2))
                 .save(any(ProjetoUsuario.class));

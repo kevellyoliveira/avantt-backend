@@ -98,10 +98,21 @@ class ControllersSmokeTest {
         verify(authService).obterUsuarioAutenticado(token);
         verify(usuarioService).create(req, organizacaoId);
 
-        when(usuarioService.listAll(null))
+        when(projetoService.listarIdsPorOrganizacaoOuMembro(
+                organizacaoId,
+                10
+        )).thenReturn(List.of());
+        when(usuarioService.listForOrganization(
+                organizacaoId,
+                null,
+                List.of()
+        ))
                 .thenReturn(List.of(res));
 
-        ResponseEntity<?> l = usuarioController.listUsuarios(null);
+        ResponseEntity<?> l = usuarioController.listUsuarios(
+                null,
+                "Bearer " + token
+        );
 
         assertEquals(200, l.getStatusCode().value());
     }
@@ -128,11 +139,23 @@ class ControllersSmokeTest {
 
         assertEquals(201, r.getStatusCode().value());
 
-        when(tarefaService.listAll(null, null, null))
+        String token = "token-tarefa-smoke";
+        Usuario usuario = new Usuario();
+        usuario.setId(10);
+        usuario.setOrganizacaoId(1);
+        when(authService.obterUsuarioAutenticado(token)).thenReturn(usuario);
+        when(projetoService.listarIdsPorOrganizacaoOuMembro(1, 10))
+                .thenReturn(List.of(1));
+        when(tarefaService.listAllForProjects(List.of(1), null, null, null))
                 .thenReturn(List.of(res));
 
         ResponseEntity<?> l =
-                tarefaController.list(null, null, null);
+                tarefaController.list(
+                        null,
+                        null,
+                        null,
+                        "Bearer " + token
+                );
 
         assertEquals(200, l.getStatusCode().value());
     }
@@ -284,10 +307,20 @@ class ControllersSmokeTest {
 
         assertEquals(201, r.getStatusCode().value());
 
-        when(sprintService.listAll(null))
+        Usuario usuario = new Usuario();
+        usuario.setId(10);
+        usuario.setOrganizacaoId(1);
+        when(authService.obterUsuarioAutenticado("token-smoke")).thenReturn(usuario);
+
+        ProjetoResponseDTO projeto = new ProjetoResponseDTO();
+        projeto.setId("1");
+        projeto.setName("Projeto");
+        when(projetoService.listarPorOrganizacaoOuMembro(1, 10))
+                .thenReturn(List.of(projeto));
+        when(sprintService.listAll("1"))
                 .thenReturn(List.of(res));
 
-        ResponseEntity<?> l = sprintController.listSprints(null);
+        ResponseEntity<?> l = sprintController.listSprints(null, "Bearer token-smoke");
 
         assertEquals(200, l.getStatusCode().value());
     }

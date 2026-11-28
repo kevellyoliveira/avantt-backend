@@ -5,6 +5,7 @@ import com.avantt_backend.dto.SprintRequestDTO;
 import com.avantt_backend.dto.SprintResponseDTO;
 import com.avantt_backend.entity.Sprint;
 import com.avantt_backend.entity.ProjetoUsuario;
+import com.avantt_backend.entity.Status;
 import com.avantt_backend.entity.Tarefa;
 import com.avantt_backend.exception.ApiException;
 import com.avantt_backend.exception.ResourceNotFoundException;
@@ -25,7 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -422,6 +425,10 @@ public class SprintService {
             sprint.setNome(dto.getName());
         }
 
+        if (dto.getGoal() != null) {
+            sprint.setObjetivo(dto.getGoal());
+        }
+
         var projetoOptional = projetoRepository.findById(sprint.getProjetoId());
 
         if (projetoOptional.isEmpty()) {
@@ -479,12 +486,52 @@ public class SprintService {
                 );
             }
 
-            sprint.setStatusId(dto.getStatusId());
+            setSprintStatus(sprint, statusOptional.get());
         }
 
         Sprint saved = sprintRepository.save(sprint);
 
-        if (dto.getAddTeam() != null && !dto.getAddTeam().isEmpty()) {
+        List<Integer> addTeam = dto.getAddTeam();
+        List<Integer> removeTeam = dto.getRemoveTeam();
+
+        if (dto.getTeam() != null) {
+            Set<Integer> desiredUsers = new LinkedHashSet<>();
+            for (Integer usuarioId : dto.getTeam()) {
+                if (usuarioId == null) {
+                    throw new ApiException("Usuário inválido na lista de team");
+                }
+                desiredUsers.add(usuarioId);
+            }
+
+            Set<Integer> currentUsers = new LinkedHashSet<>();
+            var currentSprintUsers =
+                    sprintUsuarioRepository.findByIdSprintId(sprintId);
+            if (currentSprintUsers != null) {
+                for (var sprintUsuario : currentSprintUsers) {
+                    if (sprintUsuario != null
+                            && sprintUsuario.getId() != null
+                            && sprintUsuario.getId().getUsuarioId() != null) {
+                        currentUsers.add(sprintUsuario.getId().getUsuarioId());
+                    }
+                }
+            }
+
+            addTeam = new ArrayList<>();
+            for (Integer usuarioId : desiredUsers) {
+                if (!currentUsers.contains(usuarioId)) {
+                    addTeam.add(usuarioId);
+                }
+            }
+
+            removeTeam = new ArrayList<>();
+            for (Integer usuarioId : currentUsers) {
+                if (!desiredUsers.contains(usuarioId)) {
+                    removeTeam.add(usuarioId);
+                }
+            }
+        }
+
+        if (addTeam != null && !addTeam.isEmpty()) {
 
             var projetoUsuarios =
                     projetoUsuarioRepository.findByIdProjetoId(sprint.getProjetoId());
@@ -495,7 +542,7 @@ public class SprintService {
                 projectMemberIds.add(projetoUsuario.getId().getUsuarioId());
             }
 
-            for (Integer usuarioId : dto.getAddTeam()) {
+            for (Integer usuarioId : addTeam) {
 
                 if (usuarioId == null) {
                     throw new ApiException("Usuário inválido na lista de team");
@@ -525,9 +572,9 @@ public class SprintService {
             }
         }
 
-        if (dto.getRemoveTeam() != null && !dto.getRemoveTeam().isEmpty()) {
+        if (removeTeam != null && !removeTeam.isEmpty()) {
 
-            for (Integer usuarioId : dto.getRemoveTeam()) {
+            for (Integer usuarioId : removeTeam) {
 
                 if (usuarioId == null) {
                     continue;
@@ -563,6 +610,8 @@ public class SprintService {
         response.setId(saved.getId());
         response.setName(saved.getNome());
         response.setProject(projeto.getName());
+        response.setProjectId(saved.getProjetoId());
+        response.setGoal(saved.getObjetivo());
         response.setStartDate(saved.getDataInicio());
         response.setEndDate(saved.getDataFim());
 
@@ -603,12 +652,7 @@ public class SprintService {
 
         response.setTeam(names);
 
-        response.setStatusId(saved.getStatusId());
-
-        if (saved.getStatusId() != null) {
-            statusTarefaRepository.findById(saved.getStatusId())
-                    .ifPresent(status -> response.setStatusName(status.getNome()));
-        }
+        populateStatus(saved, response);
 
         return response;
     }
@@ -642,7 +686,7 @@ public class SprintService {
         }
 
         Sprint sprint = sprintOptional.get();
-        sprint.setStatusId(statusId);
+        setSprintStatus(sprint, statusOptional.get());
 
         Sprint saved = sprintRepository.save(sprint);
 
@@ -652,6 +696,8 @@ public class SprintService {
 
         response.setId(saved.getId());
         response.setName(saved.getNome());
+        response.setProjectId(saved.getProjetoId());
+        response.setGoal(saved.getObjetivo());
 
         AtomicReference<String> projectName = new AtomicReference<>();
 
@@ -699,12 +745,7 @@ public class SprintService {
 
         response.setTeam(names);
 
-        response.setStatusId(saved.getStatusId());
-
-        if (saved.getStatusId() != null) {
-            statusTarefaRepository.findById(saved.getStatusId())
-                    .ifPresent(status -> response.setStatusName(status.getNome()));
-        }
+        populateStatus(saved, response);
 
         return response;
     }
@@ -752,6 +793,7 @@ public class SprintService {
 
         sprint.setProjetoId(projeto.getId());
         sprint.setNome(dto.getName());
+        sprint.setObjetivo(dto.getGoal());
         sprint.setDataInicio(dto.getStartDate());
         sprint.setDataFim(dto.getEndDate());
 
@@ -771,7 +813,7 @@ public class SprintService {
             );
         }
 
-        sprint.setStatusId(dto.getStatusId());
+        setSprintStatus(sprint, statusOptional.get());
 
         Sprint saved = sprintRepository.save(sprint);
 
@@ -780,8 +822,11 @@ public class SprintService {
         response.setId(saved.getId());
         response.setName(saved.getNome());
         response.setProject(projeto.getName());
+        response.setProjectId(saved.getProjetoId());
+        response.setGoal(saved.getObjetivo());
         response.setStartDate(saved.getDataInicio());
         response.setEndDate(saved.getDataFim());
+        populateStatus(saved, response);
 
         ProgressInfo info = recalculateAndPersistProgress(saved.getId());
 
@@ -952,15 +997,12 @@ public class SprintService {
             }
 
             response.setProject(projectName);
+            response.setProjectId(sprint.getProjetoId());
+            response.setGoal(sprint.getObjetivo());
             response.setStartDate(sprint.getDataInicio());
             response.setEndDate(sprint.getDataFim());
 
-            response.setStatusId(sprint.getStatusId());
-
-            if (sprint.getStatusId() != null) {
-                statusTarefaRepository.findById(sprint.getStatusId())
-                        .ifPresent(status -> response.setStatusName(status.getNome()));
-            }
+            populateStatus(sprint, response);
 
             ProgressInfo info = sprint.getId() == null
                     ? new ProgressInfo(0, 0, 0)
@@ -1044,5 +1086,38 @@ public class SprintService {
         }
 
         return names;
+    }
+
+    private void populateStatus(Sprint sprint, SprintResponseDTO response) {
+        response.setStatus(sprint.getStatus());
+        response.setStatusName(sprint.getStatus());
+
+        if (sprint.getStatusId() != null) {
+            response.setStatusId(sprint.getStatusId());
+        } else if (sprint.getStatus() != null) {
+            String catalogStatus = "Finalizada".equalsIgnoreCase(sprint.getStatus())
+                    ? "Concluída"
+                    : sprint.getStatus();
+            statusTarefaRepository.findByNomeIgnoreCase(catalogStatus)
+                    .map(Status::getId)
+                    .ifPresent(response::setStatusId);
+        }
+    }
+
+    private void setSprintStatus(Sprint sprint, Status status) {
+        String statusName = status.getNome();
+        if ("Planejada".equalsIgnoreCase(statusName)) {
+            sprint.setStatus("Planejada");
+        } else if ("Em andamento".equalsIgnoreCase(statusName)) {
+            sprint.setStatus("Em andamento");
+        } else if ("Finalizada".equalsIgnoreCase(statusName)
+                || "Concluída".equalsIgnoreCase(statusName)) {
+            sprint.setStatus("Finalizada");
+        } else {
+            throw new ApiException(
+                    "Status não permitido para sprint: " + statusName
+            );
+        }
+        sprint.setStatusId(status.getId());
     }
 }

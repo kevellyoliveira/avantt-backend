@@ -2,7 +2,10 @@ package com.avantt_backend.controller;
 
 import com.avantt_backend.dto.TarefaRequestDTO;
 import com.avantt_backend.dto.TarefaResponseDTO;
+import com.avantt_backend.entity.Usuario;
 import com.avantt_backend.exception.GlobalExceptionHandler;
+import com.avantt_backend.service.AuthService;
+import com.avantt_backend.service.ProjetoService;
 import com.avantt_backend.service.TarefaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -37,6 +40,12 @@ class TarefaControllerTest {
 
     @Mock
     private TarefaService tarefaService;
+
+    @Mock
+    private ProjetoService projetoService;
+
+    @Mock
+    private AuthService authService;
 
     @InjectMocks
     private com.avantt_backend.controller.TarefaController tarefaController;
@@ -102,12 +111,55 @@ class TarefaControllerTest {
     void getList_shouldReturn200() throws Exception {
         TarefaResponseDTO t1 = new TarefaResponseDTO(); t1.setId("1"); t1.setTitle("A");
         TarefaResponseDTO t2 = new TarefaResponseDTO(); t2.setId("2"); t2.setTitle("B");
-        when(tarefaService.listAll(any(), any(), any())).thenReturn(List.of(t1,t2));
+        Usuario usuario = authenticatedUser();
+        when(authService.obterUsuarioAutenticado("valid-token")).thenReturn(usuario);
+        when(projetoService.listarIdsPorOrganizacaoOuMembro(8, 21))
+                .thenReturn(List.of(23, 24));
+        when(tarefaService.listAllForProjects(List.of(23, 24), null, null, null))
+                .thenReturn(List.of(t1, t2));
 
-        mockMvc.perform(get("/api/tarefas").accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/tarefas")
+                        .header("Authorization", "Bearer valid-token")
+                        .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)));
 
-        verify(tarefaService).listAll(null, null, null);
+        verify(tarefaService).listAllForProjects(
+                List.of(23, 24),
+                null,
+                null,
+                null
+        );
+    }
+
+    @Test
+    void getList_withoutToken_shouldReturn401() throws Exception {
+        mockMvc.perform(get("/api/tarefas"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(authService, projetoService, tarefaService);
+    }
+
+    @Test
+    void getList_withInaccessibleProject_shouldReturnEmptyList() throws Exception {
+        Usuario usuario = authenticatedUser();
+        when(authService.obterUsuarioAutenticado("valid-token")).thenReturn(usuario);
+        when(projetoService.listarIdsPorOrganizacaoOuMembro(8, 21))
+                .thenReturn(List.of(23));
+
+        mockMvc.perform(get("/api/tarefas")
+                        .param("projetoId", "99")
+                        .header("Authorization", "Bearer valid-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+
+        verifyNoInteractions(tarefaService);
+    }
+
+    private Usuario authenticatedUser() {
+        Usuario usuario = new Usuario();
+        usuario.setId(21);
+        usuario.setOrganizacaoId(8);
+        return usuario;
     }
 }

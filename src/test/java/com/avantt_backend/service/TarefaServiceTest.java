@@ -115,6 +115,18 @@ class TarefaServiceTest {
     }
 
     @Test
+    void listAll_withProjectIdQueriesOnlyThatProjectsTasks() {
+        when(tarefaRepository.findByProjetoId(42)).thenReturn(List.of());
+
+        List<TarefaResponseDTO> result =
+                tarefaService.listAll("42", null, null);
+
+        assertTrue(result.isEmpty());
+        verify(tarefaRepository).findByProjetoId(42);
+        verify(tarefaRepository, never()).findAll();
+    }
+
+    @Test
     void create_throwsWhenProjectNotFound() {
 
         TarefaRequestDTO dto = new TarefaRequestDTO();
@@ -135,11 +147,14 @@ class TarefaServiceTest {
     void create_withValidData_savesAndSchedulesRecalc() {
 
         TarefaRequestDTO dto = buildValidDto();
+        dto.setPlannedEnd(LocalDate.now());
 
         Projeto projeto = new Projeto();
 
         projeto.setId(1);
         projeto.setName("P");
+        projeto.setStartDate(LocalDate.now().minusDays(1));
+        projeto.setEndDate(LocalDate.now().plusDays(20));
 
         when(projetoRepository.findById(1))
                 .thenReturn(Optional.of(projeto));
@@ -149,6 +164,7 @@ class TarefaServiceTest {
         sprint.setId(2);
         sprint.setProjetoId(1);
         sprint.setNome("S");
+        sprint.setDataInicio(LocalDate.now().minusDays(5));
         sprint.setDataFim(LocalDate.now().plusDays(10));
 
         when(sprintRepository.findById(2))
@@ -220,19 +236,6 @@ class TarefaServiceTest {
         when(sprintRepository.findById(2))
                 .thenReturn(Optional.of(sprint));
 
-        Prioridade prioridade = buildPrioridade();
-
-        when(prioridadeRepository.findById(1))
-                .thenReturn(Optional.of(prioridade));
-
-        Status status = new Status();
-
-        status.setId(1);
-        status.setNome("To Do");
-
-        when(statusTarefaRepository.findById(1))
-                .thenReturn(Optional.of(status));
-
         dto.setPlannedEnd(LocalDate.now().plusDays(5));
 
         ApiException ex = assertThrows(
@@ -244,6 +247,34 @@ class TarefaServiceTest {
                 ex.getMessage().contains("data de fim da sprint")
         );
 
+        verify(tarefaRepository, never()).save(any(Tarefa.class));
+    }
+
+    @Test
+    void create_plannedEndAfterProject_throwsApiException() {
+        TarefaRequestDTO dto = buildValidDto();
+        dto.setPlannedEnd(LocalDate.now().plusDays(5));
+
+        Projeto projeto = new Projeto();
+        projeto.setId(1);
+        projeto.setName("P");
+        projeto.setStartDate(LocalDate.now().minusDays(1));
+        projeto.setEndDate(LocalDate.now().plusDays(3));
+        when(projetoRepository.findById(1)).thenReturn(Optional.of(projeto));
+
+        Sprint sprint = new Sprint();
+        sprint.setId(2);
+        sprint.setProjetoId(1);
+        sprint.setDataInicio(LocalDate.now().minusDays(1));
+        sprint.setDataFim(LocalDate.now().plusDays(10));
+        when(sprintRepository.findById(2)).thenReturn(Optional.of(sprint));
+
+        ApiException exception = assertThrows(
+                ApiException.class,
+                () -> tarefaService.create(dto)
+        );
+
+        assertTrue(exception.getMessage().contains("fim do projeto"));
         verify(tarefaRepository, never()).save(any(Tarefa.class));
     }
 
@@ -354,6 +385,26 @@ class TarefaServiceTest {
 
         // Não deve mais buscar os usuários pela sprint.
         verifyNoInteractions(sprintUsuarioRepository);
+    }
+
+    @Test
+    void listAllForProjects_withNoAccessibleProjectsReturnsEmptyWithoutQueryingAllTasks() {
+        var result = tarefaService.listAllForProjects(List.of(), null, null, null);
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(tarefaRepository);
+    }
+
+    @Test
+    void listAllForProjects_usesOnlyAccessibleProjectIds() {
+        when(tarefaRepository.findByProjetoIdIn(List.of(23)))
+                .thenReturn(List.of());
+
+        var result = tarefaService.listAllForProjects(List.of(23), null, null, null);
+
+        assertTrue(result.isEmpty());
+        verify(tarefaRepository).findByProjetoIdIn(List.of(23));
+        verify(tarefaRepository, never()).findAll();
     }
 
 }

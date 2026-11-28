@@ -97,6 +97,28 @@ public class ProjetoService {
             Integer organizacaoId,
             Integer usuarioId) {
 
+        return buscarProjetosPorOrganizacaoOuMembro(organizacaoId, usuarioId)
+                .stream()
+                .map(this::toFrontend)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Integer> listarIdsPorOrganizacaoOuMembro(
+            Integer organizacaoId,
+            Integer usuarioId) {
+
+        return buscarProjetosPorOrganizacaoOuMembro(organizacaoId, usuarioId)
+                .stream()
+                .map(Projeto::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    private List<Projeto> buscarProjetosPorOrganizacaoOuMembro(
+            Integer organizacaoId,
+            Integer usuarioId) {
+
         if (organizacaoId == null || usuarioId == null) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
@@ -185,9 +207,7 @@ public class ProjetoService {
             );
         }
 
-        return projetos.stream()
-                .map(this::toFrontend)
-                .collect(Collectors.toList());
+        return projetos;
     }
 
     // Retorna o progresso atual do projeto
@@ -230,9 +250,18 @@ public class ProjetoService {
         validarStatus(status);
         p.setStatus(status);
 
+        if (organizacaoId == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Organização do usuário autenticado não informada."
+            );
+        }
+
         if (dto.getClienteId() != null) {
 
-            if (!clienteRepository.existsById(dto.getClienteId())) {
+            if (!clienteRepository.existsByIdAndOrganizacaoId(
+                    dto.getClienteId(),
+                    organizacaoId)) {
                 throw new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Cliente não encontrado: id=" + dto.getClienteId()
@@ -240,13 +269,6 @@ public class ProjetoService {
             }
 
             p.setClienteId(dto.getClienteId());
-        }
-
-        if (organizacaoId == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Organização do usuário autenticado não informada."
-            );
         }
 
         if (!organizacaoRepository.existsById(organizacaoId)) {
@@ -310,7 +332,9 @@ public class ProjetoService {
 
         if (dto.getClienteId() != null) {
 
-            if (!clienteRepository.existsById(dto.getClienteId())) {
+            if (!clienteRepository.existsByIdAndOrganizacaoId(
+                    dto.getClienteId(),
+                    organizacaoId)) {
                 throw new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Cliente não encontrado: id=" + dto.getClienteId()
@@ -820,6 +844,15 @@ public class ProjetoService {
             f.setRisks(risks);
 
             f.setClienteId(p.getClienteId());
+            if (p.getClienteId() != null && p.getOrganizacaoId() != null) {
+                clienteRepository.findByIdAndOrganizacaoId(
+                                p.getClienteId(),
+                                p.getOrganizacaoId()
+                        )
+                        .ifPresent(cliente ->
+                                f.setClientName(cliente.getNome())
+                        );
+            }
             f.setOrganizacaoId(p.getOrganizacaoId());
 
             if (p.getOrganizacaoId() != null) {

@@ -114,7 +114,9 @@ CREATE TABLE projeto (
     id INT AUTO_INCREMENT PRIMARY KEY,
 
     organizacao_id INT NOT NULL,
+    criado_por_id INT NULL,
     cliente_id INT NULL,
+    aviso_prazo_enviado_para DATE NULL,
 
     nome VARCHAR(150) NOT NULL,
     descricao TEXT,

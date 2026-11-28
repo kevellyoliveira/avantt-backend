@@ -2,7 +2,7 @@ package com.avantt_backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -32,7 +32,7 @@ public class TarefaRequestDTO {
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     @NotNull(message = "Data de entrega é obrigatório")
-    @Future(message = "Data de entrega deve ser no futuro")
+    @FutureOrPresent(message = "Data de entrega deve ser hoje ou no futuro")
     private LocalDate plannedEnd;
 
     private Integer estimatedHours;

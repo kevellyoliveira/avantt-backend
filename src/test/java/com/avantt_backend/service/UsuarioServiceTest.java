@@ -10,6 +10,7 @@ import com.avantt_backend.repository.ExistenceRepository;
 import com.avantt_backend.repository.UsuarioRepository;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,10 +24,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,6 +65,7 @@ class UsuarioServiceTest {
         dto.setEmail(email);
         dto.setPerfilId(perfilId);
         dto.setRole("Colaborador");
+        dto.setPapel("developer");
 
         return dto;
     }
@@ -112,6 +117,7 @@ class UsuarioServiceTest {
         assertEquals("1", res.getId());
         assertEquals("Bruno Lima", res.getName());
         assertEquals("bruno@example.com", res.getEmail());
+        assertEquals("developer", res.getPapel());
         assertEquals("BL", res.getAvatar());
         assertEquals("#2563eb", res.getColor());
         assertNotNull(res.getProjects());
@@ -124,6 +130,7 @@ class UsuarioServiceTest {
                 ORGANIZACAO_ID.equals(usuario.getOrganizacaoId())
                         && "Bruno Lima".equals(usuario.getNome())
                         && "bruno@example.com".equals(usuario.getEmail())
+                        && "developer".equals(usuario.getPapel())
         ));
 
         verify(em).flush();
@@ -276,5 +283,45 @@ class UsuarioServiceTest {
         verify(usuarioRepository).findById(2);
         verify(usuarioRepository).existsByEmail("new@example.com");
         verify(usuarioRepository).save(existing);
+    }
+
+    @Test
+    void listForOrganization_limitsUsersAndProjectNamesToAccessibleData() {
+        Query query = mock(Query.class);
+        when(em.createNativeQuery(anyString())).thenReturn(query);
+        when(query.setParameter("organizacaoId", ORGANIZACAO_ID)).thenReturn(query);
+        when(query.getResultList()).thenReturn(List.of(
+                new Object[]{10, "Ana", "ana@example.com", "Dev", "developer", 11, "Projeto visivel"},
+                new Object[]{10, "Ana", "ana@example.com", "Dev", "developer", 12, "Projeto indisponivel"}
+        ));
+
+        List<UsuarioResponseDTO> result =
+                usuarioService.listForOrganization(
+                        ORGANIZACAO_ID,
+                        null,
+                        List.of(11)
+                );
+
+        assertEquals(1, result.size());
+        assertEquals(ORGANIZACAO_ID, result.get(0).getOrganizacaoId());
+        assertEquals("developer", result.get(0).getPapel());
+        assertEquals(List.of("Projeto visivel"), result.get(0).getProjects());
+        verify(em).createNativeQuery(argThat(sql ->
+                sql.contains("u.organizacao_id = :organizacaoId")
+                        && sql.contains("JOIN projeto_usuario pu")
+        ));
+    }
+
+    @Test
+    void listForOrganization_withInaccessibleProjectReturnsEmptyWithoutQuery() {
+        List<UsuarioResponseDTO> result =
+                usuarioService.listForOrganization(
+                        ORGANIZACAO_ID,
+                        99,
+                        List.of(11)
+                );
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(em);
     }
 }

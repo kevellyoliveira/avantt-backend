@@ -8,6 +8,7 @@ import com.avantt_backend.exception.ConflictException;
 import com.avantt_backend.exception.GlobalExceptionHandler;
 import com.avantt_backend.service.UsuarioService;
 import com.avantt_backend.service.AuthService;
+import com.avantt_backend.service.ProjetoService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -56,6 +57,9 @@ class UsuarioControllerTest {
 
     @Mock
     private AuthService authService;
+
+    @Mock
+    private ProjetoService projetoService;
 
     @InjectMocks
     private UsuarioController usuarioController;
@@ -167,15 +171,33 @@ class UsuarioControllerTest {
         u2.setId("2");
         u2.setName("B");
 
-        when(usuarioService.listAll(null))
+        configurarAutenticacao();
+        when(projetoService.listarIdsPorOrganizacaoOuMembro(ORGANIZACAO_ID, 10))
+                .thenReturn(Arrays.asList(11, 12));
+        when(usuarioService.listForOrganization(
+                ORGANIZACAO_ID,
+                null,
+                Arrays.asList(11, 12)))
                 .thenReturn(Arrays.asList(u1, u2));
 
         mockMvc.perform(get("/api/usuarios")
+                        .header("Authorization", "Bearer " + TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
 
-        verify(usuarioService).listAll(null);
+        verify(usuarioService).listForOrganization(
+                ORGANIZACAO_ID,
+                null,
+                Arrays.asList(11, 12));
+    }
+
+    @Test
+    void getList_withoutToken_shouldReturn401() throws Exception {
+        mockMvc.perform(get("/api/usuarios"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(usuarioService, projetoService, authService);
     }
 
     @Test

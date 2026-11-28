@@ -1,6 +1,7 @@
 package com.avantt_backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
@@ -10,8 +11,8 @@ import java.util.List;
 
 public class SprintRequestDTO {
     private String name;
+    @NotNull(message = "projectId é obrigatório")
     private Integer projectId;
-    @jakarta.validation.constraints.NotNull(message = "projectId é obrigatório")
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     @FutureOrPresent(message = "Data de início deve ser uma data futura ou presente")
@@ -33,6 +34,8 @@ public class SprintRequestDTO {
     private List<Integer> removeTeam;
     @NotNull(message = "statusId é obrigatório")
     private Integer statusId;
+    @JsonAlias({"description", "objetivo"})
+    private String goal;
 
     public SprintRequestDTO() {}
 
@@ -74,4 +77,7 @@ public class SprintRequestDTO {
 
     public Integer getStatusId() { return statusId; }
     public void setStatusId(Integer statusId) { this.statusId = statusId; }
+
+    public String getGoal() { return goal; }
+    public void setGoal(String goal) { this.goal = goal; }
 }

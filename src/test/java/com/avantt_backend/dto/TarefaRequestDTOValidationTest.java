@@ -43,6 +43,18 @@ class TarefaRequestDTOValidationTest {
     }
 
     @Test
+    void plannedEndTodayIsAllowed() {
+        TarefaRequestDTO dto = new TarefaRequestDTO();
+        dto.setTitle("T1");
+        dto.setProjectId(1);
+        dto.setSprintId(2);
+        dto.setStatusId(1);
+        dto.setPlannedEnd(LocalDate.now());
+
+        assertTrue(validator.validate(dto).isEmpty());
+    }
+
+    @Test
     void missingRequiredFields_triggerViolations() {
         TarefaRequestDTO dto = new TarefaRequestDTO();
         // missing title, projectId, sprintId, statusId, plannedEnd
@@ -58,7 +70,7 @@ class TarefaRequestDTOValidationTest {
     }
 
     @Test
-    void plannedEndMustBeFuture() {
+    void plannedEndMustNotBePast() {
         TarefaRequestDTO dto = new TarefaRequestDTO();
         dto.setTitle("T1");
         dto.setProjectId(1);

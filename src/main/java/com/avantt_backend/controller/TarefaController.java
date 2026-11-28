@@ -2,6 +2,9 @@ package com.avantt_backend.controller;
 
 import com.avantt_backend.dto.TarefaRequestDTO;
 import com.avantt_backend.dto.TarefaResponseDTO;
+import com.avantt_backend.entity.Usuario;
+import com.avantt_backend.service.AuthService;
+import com.avantt_backend.service.ProjetoService;
 import com.avantt_backend.service.TarefaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,7 +16,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +27,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -34,9 +40,16 @@ import static com.avantt_backend.util.Mensagens.*;
 public class TarefaController {
 
     private final TarefaService tarefaService;
+    private final ProjetoService projetoService;
+    private final AuthService authService;
 
-    public TarefaController(TarefaService tarefaService) {
+    public TarefaController(
+            TarefaService tarefaService,
+            ProjetoService projetoService,
+            AuthService authService) {
         this.tarefaService = tarefaService;
+        this.projetoService = projetoService;
+        this.authService = authService;
     }
 
     @Operation(summary = "Criar uma nova tarefa", description = "Cria uma nova tarefa com base nos dados fornecidos.")
@@ -75,9 +88,54 @@ public class TarefaController {
             @Parameter(description = "ID da sprint para filtrar tarefas", required = false)
             @RequestParam(value = "sprintId", required = false) String sprintId,
             @Parameter(description = "Status das tarefas para filtrar", required = false)
-            @RequestParam(value = "status", required = false) String status) {
-        List<TarefaResponseDTO> list = tarefaService.listAll(projetoId, sprintId, status);
+            @RequestParam(value = "status", required = false) String status,
+            @RequestHeader(value = "Authorization", required = false)
+            String authorization) {
+        Usuario usuario = obterUsuarioAutenticado(authorization);
+        List<Integer> projetoIds = projetoService.listarIdsPorOrganizacaoOuMembro(
+                usuario.getOrganizacaoId(),
+                usuario.getId()
+        );
+
+        if (projetoId != null) {
+            try {
+                Integer projetoIdSolicitado = Integer.valueOf(projetoId);
+                if (!projetoIds.contains(projetoIdSolicitado)) {
+                    return ResponseEntity.ok(List.of());
+                }
+            } catch (NumberFormatException ignored) {
+                // O serviço resolve nomes de projeto sem sair do escopo autorizado.
+            }
+        }
+
+        List<TarefaResponseDTO> list =
+                tarefaService.listAllForProjects(
+                        projetoIds,
+                        projetoId,
+                        sprintId,
+                        status
+                );
         return ResponseEntity.ok(list);
+    }
+
+    private Usuario obterUsuarioAutenticado(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Token de autenticação não informado ou inválido."
+            );
+        }
+
+        Usuario usuario = authService.obterUsuarioAutenticado(
+                authorization.substring(7)
+        );
+        if (usuario == null || usuario.getOrganizacaoId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Usuário autenticado não possui uma organização vinculada."
+            );
+        }
+        return usuario;
     }
 
     @PatchMapping(path = "/{id}/assignee", consumes = "application/json", produces = "application/json")

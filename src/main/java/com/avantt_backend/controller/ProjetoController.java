@@ -127,7 +127,7 @@ public class ProjetoController {
             )
     })
     @PostMapping(
-            path = PROJETOS,
+            path = {PROJETOS, "/projetos"},
             consumes = "application/json",
             produces = "application/json"
     )
@@ -222,7 +222,7 @@ public class ProjetoController {
             )
     })
     @PutMapping(
-            path = PROJETOS + "/{id}",
+            path = {PROJETOS + "/{id}", "/projetos/{id}"},
             consumes = "application/json",
             produces = "application/json"
     )
@@ -294,7 +294,7 @@ public class ProjetoController {
             )
     })
     @GetMapping(
-            path = PROJETOS + "/{id}",
+            path = {PROJETOS + "/{id}", "/projetos/{id}"},
             produces = "application/json"
     )
     public ResponseEntity<?> buscarProjetoPorId(
@@ -345,7 +345,7 @@ public class ProjetoController {
             )
     })
     @GetMapping(
-            path = PROJETOS,
+            path = {PROJETOS, "/projetos"},
             produces = "application/json"
     )
     public ResponseEntity<List<ProjetoResponseDTO>> listProjetos(
@@ -386,7 +386,7 @@ public class ProjetoController {
             )
     })
     @GetMapping(
-            path = PROJETOS + "/{id}/progress",
+            path = {PROJETOS + "/{id}/progress", "/projetos/{id}/progress"},
             produces = "application/json"
     )
     public ResponseEntity<?> getProjectProgress(

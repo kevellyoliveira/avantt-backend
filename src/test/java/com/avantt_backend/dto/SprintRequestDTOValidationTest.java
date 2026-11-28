@@ -44,15 +44,17 @@ class SprintRequestDTOValidationTest {
     @Test
     void missingRequiredFields_triggerViolations() {
         SprintRequestDTO dto = new SprintRequestDTO();
-        // missing startDate, endDate, statusId
+        // missing projectId, startDate, endDate, and statusId
 
         Set<ConstraintViolation<SprintRequestDTO>> violations = validator.validate(dto);
         assertFalse(violations.isEmpty());
 
+        boolean hasProject = violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("projectId"));
         boolean hasStart = violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("startDate"));
         boolean hasEnd = violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("endDate"));
         boolean hasStatus = violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("statusId"));
 
+        assertTrue(hasProject);
         assertTrue(hasStart);
         assertTrue(hasEnd);
         assertTrue(hasStatus);

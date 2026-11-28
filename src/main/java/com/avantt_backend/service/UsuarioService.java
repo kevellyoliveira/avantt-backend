@@ -68,6 +68,7 @@ public class UsuarioService {
         entity.setNome(dto.getName());
         entity.setEmail(dto.getEmail());
         entity.setCargo(dto.getRole());
+        entity.setPapel(dto.getPapel());
 
         if (!existenceRepository.existsPerfilById(dto.getPerfilId())) {
             throw new ResponseStatusException(
@@ -92,6 +93,7 @@ public class UsuarioService {
         f.setName(saved.getNome());
         f.setEmail(saved.getEmail());
         f.setRole(saved.getCargo());
+        f.setPapel(saved.getPapel());
 
         f.setAvatar(
                 dto.getAvatar() == null
@@ -147,6 +149,9 @@ public class UsuarioService {
         if (dto.getRole() != null) {
             u.setCargo(dto.getRole());
         }
+        if (dto.getPapel() != null) {
+            u.setPapel(dto.getPapel());
+        }
 
         // Outros campos do frontend não são persistidos nesta entidade.
 
@@ -162,6 +167,7 @@ public class UsuarioService {
         f.setName(saved.getNome());
         f.setEmail(saved.getEmail());
         f.setRole(saved.getCargo());
+        f.setPapel(saved.getPapel());
 
         f.setAvatar(
                 dto.getAvatar() == null
@@ -203,7 +209,7 @@ public class UsuarioService {
         if (projetoId != null) {
 
             String sql =
-                    "SELECT u.id, u.nome, u.email, u.cargo FROM usuario u "
+                    "SELECT u.id, u.nome, u.email, u.cargo, u.papel FROM usuario u "
                             + "JOIN projeto_usuario pu ON pu.usuario_id = u.id "
                             + "WHERE pu.projeto_id = :pid AND u.is_ativo = TRUE "
                             + "ORDER BY u.nome";
@@ -223,6 +229,7 @@ public class UsuarioService {
                 String nome = row[1] == null ? "" : row[1].toString();
                 String email = row[2] == null ? "" : row[2].toString();
                 String cargo = row[3] == null ? "" : row[3].toString();
+                String papel = row[4] == null ? null : row[4].toString();
 
                 UsuarioResponseDTO u = new UsuarioResponseDTO();
 
@@ -230,6 +237,7 @@ public class UsuarioService {
                 u.setName(nome);
                 u.setEmail(email);
                 u.setRole(cargo);
+                u.setPapel(papel);
                 u.setAvatar(generateInitials(nome));
                 u.setColor("#4B7BF5");
                 u.setTasks(new TasksDTO(0, 0, 0, 0));
@@ -256,7 +264,7 @@ public class UsuarioService {
         // Listagem geral: usuários e seus projetos.
         String sql =
                 "SELECT u.id AS usuario_id, u.nome AS usuario_nome, "
-                        + "u.email, u.cargo, u.is_ativo, "
+                        + "u.email, u.cargo, u.papel, u.is_ativo, "
                         + "p.id AS projeto_id, p.nome AS projeto_nome "
                         + "FROM usuario u "
                         + "LEFT JOIN projeto_usuario pu ON pu.usuario_id = u.id "
@@ -278,10 +286,10 @@ public class UsuarioService {
             String nome = row[1] == null ? "" : row[1].toString();
             String email = row[2] == null ? "" : row[2].toString();
             String cargo = row[3] == null ? "" : row[3].toString();
-
-            String projetoNome = row[6] == null
+            String papel = row[4] == null ? null : row[4].toString();
+            String projetoNome = row[7] == null
                     ? null
-                    : row[6].toString();
+                    : row[7].toString();
 
             if (!map.containsKey(uid)) {
 
@@ -291,6 +299,7 @@ public class UsuarioService {
                 u.setName(nome);
                 u.setEmail(email);
                 u.setRole(cargo);
+                u.setPapel(papel);
                 u.setAvatar(generateInitials(nome));
                 u.setColor("#4B7BF5");
                 u.setTasks(new TasksDTO(0, 0, 0, 0));
@@ -311,6 +320,95 @@ public class UsuarioService {
         }
 
         return new java.util.ArrayList<>(map.values());
+    }
+
+    public java.util.List<UsuarioResponseDTO> listForOrganization(
+            Integer organizacaoId,
+            Integer projetoId,
+            java.util.List<Integer> projetosAcessiveis) {
+
+        if (organizacaoId == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Não foi possível identificar a organização do usuário."
+            );
+        }
+
+        java.util.List<Integer> idsAcessiveis = projetosAcessiveis == null
+                ? java.util.Collections.emptyList()
+                : projetosAcessiveis;
+
+        if (projetoId != null && !idsAcessiveis.contains(projetoId)) {
+            return java.util.Collections.emptyList();
+        }
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT u.id, u.nome, u.email, u.cargo, u.papel, p.id, p.nome "
+                        + "FROM usuario u "
+                        + "LEFT JOIN projeto_usuario pu ON pu.usuario_id = u.id "
+                        + "LEFT JOIN projeto p ON p.id = pu.projeto_id "
+                        + "WHERE u.is_ativo = TRUE "
+                        + "AND u.organizacao_id = :organizacaoId "
+        );
+
+        if (projetoId != null) {
+            sql.append("AND pu.projeto_id = :projetoId ");
+        }
+        sql.append("ORDER BY u.nome, p.nome");
+
+        var query = em.createNativeQuery(sql.toString())
+                .setParameter("organizacaoId", organizacaoId);
+
+        if (projetoId != null) {
+            query.setParameter("projetoId", projetoId);
+        }
+
+        @SuppressWarnings("unchecked")
+        java.util.List<Object[]> rows = query.getResultList();
+
+        java.util.Map<Integer, UsuarioResponseDTO> usuarios =
+                new java.util.LinkedHashMap<>();
+
+        for (Object[] row : rows) {
+            Integer usuarioId = row[0] == null
+                    ? null
+                    : ((Number) row[0]).intValue();
+            String nome = row[1] == null ? "" : row[1].toString();
+            String email = row[2] == null ? "" : row[2].toString();
+            String cargo = row[3] == null ? "" : row[3].toString();
+            String papel = row[4] == null ? null : row[4].toString();
+            Integer projetoRelacionadoId = row[5] == null
+                    ? null
+                    : ((Number) row[5]).intValue();
+            String projetoNome = row[6] == null ? null : row[6].toString();
+
+            UsuarioResponseDTO usuario = usuarios.get(usuarioId);
+            if (usuario == null) {
+                usuario = new UsuarioResponseDTO();
+                usuario.setId(usuarioId == null ? "" : String.valueOf(usuarioId));
+                usuario.setName(nome);
+                usuario.setEmail(email);
+                usuario.setRole(cargo);
+                usuario.setPapel(papel);
+                usuario.setOrganizacaoId(organizacaoId);
+                usuario.setAvatar(generateInitials(nome));
+                usuario.setColor("#4B7BF5");
+                usuario.setTasks(new TasksDTO(0, 0, 0, 0));
+                usuario.setProjects(new java.util.ArrayList<>());
+                usuario.setWorkload(0);
+                usuarios.put(usuarioId, usuario);
+            }
+
+            if (projetoRelacionadoId != null
+                    && idsAcessiveis.contains(projetoRelacionadoId)
+                    && projetoNome != null
+                    && !projetoNome.isBlank()
+                    && !usuario.getProjects().contains(projetoNome)) {
+                usuario.getProjects().add(projetoNome);
+            }
+        }
+
+        return new java.util.ArrayList<>(usuarios.values());
     }
 
     private String generateInitials(String nome) {

@@ -7,6 +7,9 @@ public class SprintResponseDTO {
     private Integer id;
     private String name;
     private String project;
+    private Integer projectId;
+    private String goal;
+    private String status;
     @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate startDate;
     @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
@@ -31,6 +34,15 @@ public class SprintResponseDTO {
 
     public String getProject() { return project; }
     public void setProject(String project) { this.project = project; }
+
+    public Integer getProjectId() { return projectId; }
+    public void setProjectId(Integer projectId) { this.projectId = projectId; }
+
+    public String getGoal() { return goal; }
+    public void setGoal(String goal) { this.goal = goal; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }

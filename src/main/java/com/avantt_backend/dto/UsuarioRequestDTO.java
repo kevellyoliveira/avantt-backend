@@ -16,6 +16,7 @@ public class UsuarioRequestDTO {
     private String email;
 
     private String role;
+    private String papel;
     @NotNull(message = "perfilId é obrigatório")
     private Integer perfilId;
     private String avatar;
@@ -34,6 +35,9 @@ public class UsuarioRequestDTO {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    public String getPapel() { return papel; }
+    public void setPapel(String papel) { this.papel = papel; }
 
     public Integer getPerfilId() { return perfilId; }
     public void setPerfilId(Integer perfilId) { this.perfilId = perfilId; }

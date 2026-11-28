@@ -24,7 +24,10 @@ public class AuthResponseDTO {
         usuarioDTO.setId(String.valueOf(usuarioSalvo.getId()));
         usuarioDTO.setName(usuarioSalvo.getNome());
         usuarioDTO.setEmail(usuarioSalvo.getEmail());
-        usuarioDTO.setRole(usuarioSalvo.getCargo());
+        usuarioDTO.setRole(usuarioSalvo.getPapel() == null
+                ? usuarioSalvo.getCargo()
+                : usuarioSalvo.getPapel());
+        usuarioDTO.setPapel(usuarioSalvo.getPapel());
         usuarioDTO.setAvatar(gerarIniciais(usuarioSalvo.getNome()));
         usuarioDTO.setColor("#2563eb");
         usuarioDTO.setOrganizacaoId(usuarioSalvo.getOrganizacaoId());

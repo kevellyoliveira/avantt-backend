@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,6 +28,7 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -98,6 +100,7 @@ class ProjetoControllerTest {
                 + "\"status\":\"Planejada\","
                 + "\"startDate\":\"" + start + "\","
                 + "\"endDate\":\"" + end + "\","
+                + "\"clienteId\":5,"
                 + "\"progress\":0"
                 + "}";
     }
@@ -114,6 +117,8 @@ class ProjetoControllerTest {
 
         resp.setId("10");
         resp.setName("Portal");
+        resp.setClienteId(5);
+        resp.setClientName("Claro");
         resp.setOrganizacaoId(ORGANIZACAO_ID);
 
         when(projetoService.create(
@@ -128,15 +133,21 @@ class ProjetoControllerTest {
                         .content(criarJsonProjeto()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value("10"))
-                .andExpect(jsonPath("$.name").value("Portal"));
+                .andExpect(jsonPath("$.name").value("Portal"))
+                .andExpect(jsonPath("$.clienteId").value(5))
+                .andExpect(jsonPath("$.clientId").value(5))
+                .andExpect(jsonPath("$.clientName").value("Claro"));
 
         verify(authService).obterUsuarioAutenticado(TOKEN);
 
+        ArgumentCaptor<ProjetoRequestDTO> requestCaptor =
+                ArgumentCaptor.forClass(ProjetoRequestDTO.class);
         verify(projetoService).create(
-                any(ProjetoRequestDTO.class),
+                requestCaptor.capture(),
                 eq(ORGANIZACAO_ID),
                 eq(USUARIO_ID)
         );
+        assertEquals(5, requestCaptor.getValue().getClienteId());
     }
 
     @Test
@@ -148,6 +159,40 @@ class ProjetoControllerTest {
 
         verifyNoInteractions(projetoService);
         verifyNoInteractions(authService);
+    }
+
+    @Test
+    void postCreate_acceptsClientIdAlias() throws Exception {
+        configurarAutenticacao();
+
+        when(projetoService.create(
+                any(ProjetoRequestDTO.class),
+                eq(ORGANIZACAO_ID),
+                eq(USUARIO_ID)
+        )).thenReturn(new ProjetoResponseDTO());
+
+        mockMvc.perform(post("/api/projetos")
+                        .header("Authorization", AUTHORIZATION)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{"
+                                + "\"name\":\"Portal\","
+                                + "\"startDate\":\"" + LocalDate.now().plusDays(1) + "\","
+                                + "\"endDate\":\"" + LocalDate.now().plusDays(21) + "\","
+                                + "\"clientId\":5"
+                                + "}"))
+                .andExpect(status().isCreated());
+
+        ArgumentCaptor<ProjetoRequestDTO> requestCaptor =
+                ArgumentCaptor.forClass(ProjetoRequestDTO.class);
+        verify(projetoService).create(
+                requestCaptor.capture(),
+                eq(ORGANIZACAO_ID),
+                eq(USUARIO_ID)
+        );
+        assertEquals(
+                5,
+                requestCaptor.getValue().getClienteId()
+        );
     }
 
     @Test
@@ -286,6 +331,28 @@ class ProjetoControllerTest {
 
         verify(authService).obterUsuarioAutenticado(TOKEN);
 
+        verify(projetoService).listarPorOrganizacaoOuMembro(
+                ORGANIZACAO_ID,
+                USUARIO_ID
+        );
+    }
+
+    @Test
+    void getList_withoutApiPrefix_shouldReturn200() throws Exception {
+        configurarAutenticacao();
+
+        when(projetoService.listarPorOrganizacaoOuMembro(
+                ORGANIZACAO_ID,
+                USUARIO_ID
+        )).thenReturn(List.of());
+
+        mockMvc.perform(get("/projetos")
+                        .header("Authorization", AUTHORIZATION)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+
+        verify(authService).obterUsuarioAutenticado(TOKEN);
         verify(projetoService).listarPorOrganizacaoOuMembro(
                 ORGANIZACAO_ID,
                 USUARIO_ID

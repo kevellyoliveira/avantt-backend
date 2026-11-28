@@ -1,6 +1,7 @@
 
 package com.avantt_backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDate;
@@ -46,6 +47,8 @@ public class ProjetoResponseDTO {
     private List<String> risks;
 
     private Integer clienteId;
+
+    private String clientName;
 
     private Integer organizacaoId;
 
@@ -188,6 +191,19 @@ public class ProjetoResponseDTO {
 
     public void setClienteId(Integer clienteId) {
         this.clienteId = clienteId;
+    }
+
+    @JsonProperty("clientId")
+    public Integer getClientId() {
+        return clienteId;
+    }
+
+    public String getClientName() {
+        return clientName;
+    }
+
+    public void setClientName(String clientName) {
+        this.clientName = clientName;
     }
 
     public Integer getOrganizacaoId() {

@@ -116,8 +116,9 @@ CREATE TABLE IF NOT EXISTS projeto (
     nome VARCHAR(150) NOT NULL,
     descricao TEXT,
 
-    -- status stored in status table (status.id)
-    status_id INT NULL,
+    -- Status values are stored directly in the project row.
+    status ENUM('Planejada', 'Em andamento', 'Concluída', 'Bloqueada')
+        DEFAULT 'Planejada',
 
     data_inicio DATE,
     data_fim DATE,
@@ -184,7 +185,8 @@ CREATE TABLE IF NOT EXISTS sprint (
     nome VARCHAR(150) NOT NULL,
     objetivo TEXT,
 
-    status_id INT NULL,
+    status ENUM('Planejada', 'Em andamento', 'Finalizada')
+        DEFAULT 'Planejada',
     progresso INT DEFAULT 0,
     data_inicio DATE,
     data_fim DATE,
@@ -413,9 +415,5 @@ CREATE INDEX IF NOT EXISTS idx_tarefa_projeto ON tarefa(projeto_id);
 CREATE INDEX IF NOT EXISTS idx_tarefa_sprint ON tarefa(sprint_id);
 CREATE INDEX IF NOT EXISTS idx_tarefa_datafim ON tarefa(data_fim);
 CREATE INDEX IF NOT EXISTS idx_tarefa_usuario_usuario ON tarefa_usuario(usuario_id);
-
--- Note: projeto.status_id and sprint.status_id foreign keys require the `status` table
-ALTER TABLE IF EXISTS projeto ADD CONSTRAINT fk_projeto_status FOREIGN KEY (status_id) REFERENCES `status`(id) ON UPDATE CASCADE ON DELETE SET NULL;
-ALTER TABLE IF EXISTS sprint ADD CONSTRAINT fk_sprint_status FOREIGN KEY (status_id) REFERENCES `status`(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 -- End of schema

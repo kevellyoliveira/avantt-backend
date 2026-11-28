@@ -10,6 +10,7 @@ public class UsuarioResponseDTO {
     private String avatar;
     private String color;
     private String role;
+    private String papel;
     private TasksDTO tasks;
     private List<String> projects;
     private int workload;
@@ -56,6 +57,14 @@ public class UsuarioResponseDTO {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getPapel() {
+        return papel;
+    }
+
+    public void setPapel(String papel) {
+        this.papel = papel;
     }
 
     public TasksDTO getTasks() {

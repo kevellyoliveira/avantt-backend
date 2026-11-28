@@ -31,6 +31,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
@@ -196,6 +197,8 @@ public class TarefaService {
             }
         }
 
+        validarDataEntrega(dto.getPlannedEnd(), proj, sprint);
+
         // Resolve responsável.
         Integer assigneeId = null;
 
@@ -310,16 +313,6 @@ public class TarefaService {
 
         // Data de entrega.
         if (dto.getPlannedEnd() != null) {
-
-            if (sprint != null
-                    && sprint.getDataFim() != null
-                    && dto.getPlannedEnd().isAfter(sprint.getDataFim())) {
-
-                throw new ApiException(
-                        "A data de entrega deve ser até a data de fim da sprint"
-                );
-            }
-
             t.setPlannedEnd(dto.getPlannedEnd());
         }
 
@@ -542,28 +535,25 @@ public class TarefaService {
 
         // Data de entrega.
         if (dto.getPlannedEnd() != null) {
+            var projetoOptional = projetoRepository.findById(t.getProjetoId());
+            if (projetoOptional.isEmpty()) {
+                throw new ResourceNotFoundException(
+                        "Projeto não encontrado: id=" + t.getProjetoId()
+                );
+            }
 
+            Sprint sprint = null;
             if (t.getSprintId() != null) {
-
-                var sprintOpt = sprintRepository.findById(t.getSprintId());
-
-                if (sprintOpt.isEmpty()) {
-                    throw new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
+                var sprintOptional = sprintRepository.findById(t.getSprintId());
+                if (sprintOptional.isEmpty()) {
+                    throw new ResourceNotFoundException(
                             "Sprint não encontrada: id=" + t.getSprintId()
                     );
                 }
-
-                if (sprintOpt.get().getDataFim() != null
-                        && dto.getPlannedEnd().isAfter(
-                        sprintOpt.get().getDataFim())) {
-
-                    throw new ApiException(
-                            "A data de entrega deve ser até a data de fim da sprint"
-                    );
-                }
+                sprint = sprintOptional.get();
             }
 
+            validarDataEntrega(dto.getPlannedEnd(), projetoOptional.get(), sprint);
             t.setPlannedEnd(dto.getPlannedEnd());
         }
 
@@ -695,7 +685,74 @@ public class TarefaService {
             String sprintId,
             String status) {
 
-        List<Tarefa> all = tarefaRepository.findAll();
+        if (projetoId == null) {
+            return listAll(
+                    tarefaRepository.findAll(),
+                    null,
+                    sprintId,
+                    status
+            );
+        }
+
+        Integer projetoIdResolvido = resolveProjectId(projetoId);
+        if (projetoIdResolvido == null) {
+            return Collections.emptyList();
+        }
+
+        return listAll(
+                tarefaRepository.findByProjetoId(projetoIdResolvido),
+                null,
+                sprintId,
+                status
+        );
+    }
+
+    public List<TarefaResponseDTO> listAllForProjects(
+            List<Integer> projetoIds,
+            String projetoId,
+            String sprintId,
+            String status) {
+
+        if (projetoIds == null || projetoIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Integer> idsConsultados = projetoIds;
+        if (projetoId != null) {
+            Integer projetoIdResolvido = resolveProjectId(projetoId);
+            if (projetoIdResolvido == null || !projetoIds.contains(projetoIdResolvido)) {
+                return Collections.emptyList();
+            }
+            idsConsultados = List.of(projetoIdResolvido);
+        }
+
+        return listAll(
+                tarefaRepository.findByProjetoIdIn(idsConsultados),
+                null,
+                sprintId,
+                status
+        );
+    }
+
+    private Integer resolveProjectId(String projetoId) {
+        String numericId = projetoId.replaceAll("[^0-9]", "");
+        if (!numericId.isEmpty()) {
+            try {
+                return Integer.valueOf(numericId);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return projetoRepository.findByName(projetoId)
+                .map(Projeto::getId)
+                .orElse(null);
+    }
+
+    private List<TarefaResponseDTO> listAll(
+            List<Tarefa> all,
+            String projetoId,
+            String sprintId,
+            String status) {
 
         // Filtro por projeto.
         if (projetoId != null) {
@@ -1058,6 +1115,45 @@ public class TarefaService {
                     );
 
             tarefaTagRepository.save(tt);
+        }
+    }
+
+    private void validarDataEntrega(
+            LocalDate plannedEnd,
+            Projeto projeto,
+            Sprint sprint) {
+        if (plannedEnd == null) {
+            return;
+        }
+
+        if (projeto.getStartDate() != null
+                && plannedEnd.isBefore(projeto.getStartDate())) {
+            throw new ApiException(
+                    "A data de entrega não pode ser anterior ao início do projeto"
+            );
+        }
+
+        if (projeto.getEndDate() != null
+                && plannedEnd.isAfter(projeto.getEndDate())) {
+            throw new ApiException(
+                    "A data de entrega não pode ser posterior ao fim do projeto"
+            );
+        }
+
+        if (sprint != null
+                && sprint.getDataInicio() != null
+                && plannedEnd.isBefore(sprint.getDataInicio())) {
+            throw new ApiException(
+                    "A data de entrega não pode ser anterior ao início da sprint"
+            );
+        }
+
+        if (sprint != null
+                && sprint.getDataFim() != null
+                && plannedEnd.isAfter(sprint.getDataFim())) {
+            throw new ApiException(
+                    "A data de entrega deve ser até a data de fim da sprint"
+            );
         }
     }
 

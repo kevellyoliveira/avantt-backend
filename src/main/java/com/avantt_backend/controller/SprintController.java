@@ -2,6 +2,10 @@ package com.avantt_backend.controller;
 
 import com.avantt_backend.dto.SprintRequestDTO;
 import com.avantt_backend.dto.SprintResponseDTO;
+import com.avantt_backend.dto.ProjetoResponseDTO;
+import com.avantt_backend.entity.Usuario;
+import com.avantt_backend.service.AuthService;
+import com.avantt_backend.service.ProjetoService;
 import com.avantt_backend.service.SprintService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,6 +17,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +27,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.avantt_backend.util.ApiPaths.SPRINTS;
@@ -33,21 +41,28 @@ import static com.avantt_backend.util.Mensagens.*;
 public class SprintController {
 
     private final SprintService sprintService;
+    private final ProjetoService projetoService;
+    private final AuthService authService;
 
-    public SprintController(SprintService sprintService) {
+    public SprintController(
+            SprintService sprintService,
+            ProjetoService projetoService,
+            AuthService authService) {
         this.sprintService = sprintService;
+        this.projetoService = projetoService;
+        this.authService = authService;
     }
 
     @Operation(summary = "Criar uma nova sprint", description = "Cria uma nova sprint com base nos dados fornecidos.")
     @PostMapping(consumes = "application/json", produces = "application/json")
     @ApiResponse(responseCode = "201", description = "Sprint criada com sucesso",
         content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.SprintResponseDTO.class), examples = {
-            @ExampleObject(name = "Sprint created example", value = "{\"id\": 12, \"name\": \"Sprint 05 - Entrega\", \"project\": \"Portal Corporativo\", \"startDate\": \"2027-09-01\", \"endDate\": \"2027-09-15\", \"daysDelayed\": 0, \"progress\": 0, \"totalTasks\": 0, \"doneTasks\": 0, \"blockedTasks\": 0, \"team\": [\"Ana Carolina Souza\"], \"statusId\": 2, \"statusName\": \"Em andamento\"}")
+            @ExampleObject(name = "Sprint created example", value = "{\"id\": 12, \"name\": \"Sprint 05 - Entrega\", \"project\": \"Portal Corporativo\", \"projectId\": 1, \"goal\": \"Entregar o fluxo de autenticação\", \"startDate\": \"2027-09-01\", \"endDate\": \"2027-09-15\", \"daysDelayed\": 0, \"progress\": 0, \"totalTasks\": 0, \"doneTasks\": 0, \"blockedTasks\": 0, \"team\": [\"Ana Carolina Souza\"], \"statusId\": 2, \"status\": \"Em andamento\", \"statusName\": \"Em andamento\"}")
         }))
     public ResponseEntity<?> createSprint(
             @RequestBody(description = "Dados da sprint a ser criada", required = true,
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.SprintRequestDTO.class), examples = {
-                    @ExampleObject(name = "Sprint request example", value = "{\"name\": \"Sprint 05 - Entrega\", \"projectId\": 1, \"startDate\": \"2027-09-01\", \"endDate\": \"2027-09-15\", \"statusId\": 2, \"team\": [1,2]}")
+                    @ExampleObject(name = "Sprint request example", value = "{\"name\": \"Sprint 05 - Entrega\", \"projectId\": 1, \"startDate\": \"2027-09-01\", \"endDate\": \"2027-09-15\", \"statusId\": 2, \"goal\": \"Entregar o fluxo de autenticação\", \"team\": [1,2]}")
                 }))
             @Valid @org.springframework.web.bind.annotation.RequestBody SprintRequestDTO request) {
         var created = sprintService.create(request);
@@ -62,23 +77,56 @@ public class SprintController {
     @GetMapping(produces = "application/json")
     public ResponseEntity<?> listSprints(
             @Parameter(description = "ID do projeto para filtrar as sprints", required = false)
-            @RequestParam(value = "projeto_id", required = false) String projetoId) {
-        List<SprintResponseDTO> list = sprintService.listAll(projetoId);
+            @RequestParam(value = "projeto_id", required = false) String projetoId,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        Usuario usuario = obterUsuarioAutenticado(authorization);
+        List<ProjetoResponseDTO> projetos = projetoService.listarPorOrganizacaoOuMembro(
+                usuario.getOrganizacaoId(),
+                usuario.getId()
+        );
+
+        List<SprintResponseDTO> list = new ArrayList<>();
+        for (ProjetoResponseDTO projeto : projetos) {
+            if (projetoId != null
+                    && !projetoId.equals(projeto.getId())
+                    && !projetoId.equals(projeto.getName())) {
+                continue;
+            }
+            list.addAll(sprintService.listAll(projeto.getId()));
+        }
         return ResponseEntity.ok(list);
     }
 
-    @Operation(summary = "Atualizar sprint", description = "Atualiza dados da sprint: nome, datas e associação de membros (adicionar/remover).")
+    private Usuario obterUsuarioAutenticado(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Token de autenticação não informado ou inválido."
+            );
+        }
+
+        Usuario usuario = authService.obterUsuarioAutenticado(authorization.substring(7));
+        if (usuario == null || usuario.getOrganizacaoId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Usuário autenticado não possui uma organização vinculada."
+            );
+        }
+        return usuario;
+    }
+
+    @Operation(summary = "Atualizar sprint", description = "Atualiza dados da sprint, objetivo, status, datas e equipe.")
     @PutMapping(path = "/{id}", consumes = "application/json", produces = "application/json")
     @ApiResponse(responseCode = "200", description = "Sprint atualizada com sucesso",
         content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.SprintResponseDTO.class), examples = {
-            @ExampleObject(name = "Sprint updated example", value = "{\"id\": 12, \"name\": \"Sprint 05 - Entrega\", \"project\": \"Portal Corporativo\", \"startDate\": \"2027-09-01\", \"endDate\": \"2027-09-15\", \"daysDelayed\": 0, \"progress\": 10, \"totalTasks\": 5, \"doneTasks\": 1, \"blockedTasks\": 0, \"team\": [\"Ana\",\"Bruno\"], \"statusId\": 2, \"statusName\": \"Em andamento\"}")
+            @ExampleObject(name = "Sprint updated example", value = "{\"id\": 12, \"name\": \"Sprint 05 - Entrega\", \"project\": \"Portal Corporativo\", \"projectId\": 1, \"goal\": \"Entregar o fluxo de autenticação\", \"startDate\": \"2027-09-01\", \"endDate\": \"2027-09-15\", \"daysDelayed\": 0, \"progress\": 10, \"totalTasks\": 5, \"doneTasks\": 1, \"blockedTasks\": 0, \"team\": [\"Ana\",\"Bruno\"], \"statusId\": 2, \"status\": \"Em andamento\", \"statusName\": \"Em andamento\"}")
         }))
     public ResponseEntity<?> updateSprint(
             @Parameter(description = "ID da sprint a ser atualizada", required = true)
             @PathVariable Integer id,
             @RequestBody(description = "Dados para atualizar a sprint", required = true,
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = com.avantt_backend.dto.SprintRequestDTO.class), examples = {
-                    @ExampleObject(name = "Sprint update request example", value = "{\"name\": \"Sprint 05 - Entrega atualizada\", \"startDate\": \"2027-09-02\", \"endDate\": \"2027-09-16\", \"addTeam\": [3], \"removeTeam\": [2], \"statusId\": 2}")
+                    @ExampleObject(name = "Sprint update request example", value = "{\"name\": \"Sprint 05 - Entrega atualizada\", \"projectId\": 1, \"startDate\": \"2027-09-02\", \"endDate\": \"2027-09-16\", \"statusId\": 2, \"goal\": \"Finalizar autenticação\", \"team\": [1,3]}")
                 })) @Valid @org.springframework.web.bind.annotation.RequestBody SprintRequestDTO request) {
         var updated = sprintService.update(id, request);
         return ResponseEntity.ok(updated);

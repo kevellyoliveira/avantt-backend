@@ -5,6 +5,7 @@ import com.avantt_backend.dto.AuthRequestDTO;
 import com.avantt_backend.dto.PasswordResetConfirmDTO;
 import com.avantt_backend.dto.PasswordResetRequestDTO;
 import com.avantt_backend.dto.RegisterRequestDTO;
+import com.avantt_backend.entity.Perfil;
 import com.avantt_backend.entity.Usuario;
 import com.avantt_backend.repository.UsuarioRepository;
 import com.avantt_backend.repository.PerfilRepository;
@@ -39,6 +40,9 @@ class AuthServiceTest {
     @Mock
     EmailService emailService;
 
+    @Mock
+    ConviteService conviteService;
+
     @InjectMocks
     AuthService authService;
 
@@ -67,7 +71,31 @@ class AuthServiceTest {
         assertNull(res);
 
         verify(usuarioRepository).existsByEmail("a@b.com");
-        verifyNoInteractions(emailService);
+        verifyNoInteractions(emailService, conviteService);
+    }
+
+    @Test
+    void register_sendsFirstAccessInvitation() {
+        Perfil perfil = new Perfil();
+        perfil.setId(3);
+        when(perfilRepository.findByNome("Colaborador")).thenReturn(perfil);
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> {
+                    Usuario usuario = invocation.getArgument(0);
+                    usuario.setId(17);
+                    return usuario;
+                });
+
+        RegisterRequestDTO request = new RegisterRequestDTO();
+        request.setName("Nova desenvolvedora");
+        request.setEmail("dev@example.com");
+        request.setPassword("senha-segura");
+        request.setRole("Colaborador");
+
+        var response = authService.register(request);
+
+        assertEquals("17", response.getId());
+        verify(conviteService).convidarSeNecessario(17);
     }
 
     @Test
@@ -78,6 +106,7 @@ class AuthServiceTest {
         u.setId(5);
         u.setNome("User");
         u.setEmail("u@e.com");
+        u.setPapel("developer");
 
         // Usuário já concluiu a validação do primeiro acesso.
         u.setPrimeiroAcessoValidado(true);
@@ -101,12 +130,45 @@ class AuthServiceTest {
         assertNotNull(res);
         assertNotNull(res.getToken());
         assertEquals("User", res.getUser().getName());
+        assertEquals("developer", res.getUser().getRole());
 
         AuthRequestDTO bad = new AuthRequestDTO();
         bad.setEmail("u@e.com");
         bad.setPassword("wrong");
 
         assertNull(authService.login(bad));
+    }
+
+    @Test
+    void login_recoversSystemRoleFromProfileForLegacyUser() {
+        Usuario usuario = new Usuario();
+        usuario.setId(8);
+        usuario.setNome("User");
+        usuario.setEmail("legacy@example.com");
+        usuario.setCargo("QA");
+        usuario.setPerfilId(3);
+        usuario.setSenha(new BCryptPasswordEncoder().encode("secret"));
+        usuario.setPrimeiroAcessoValidado(true);
+
+        Perfil perfil = new Perfil();
+        perfil.setId(3);
+        perfil.setNome("Desenvolvedor");
+
+        when(usuarioRepository.findByEmail("legacy@example.com"))
+                .thenReturn(Optional.of(usuario));
+        when(perfilRepository.findById(3)).thenReturn(Optional.of(perfil));
+        when(usuarioRepository.save(any(Usuario.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        AuthRequestDTO request = new AuthRequestDTO();
+        request.setEmail("legacy@example.com");
+        request.setPassword("secret");
+
+        var response = authService.login(request);
+
+        assertEquals("developer", response.getUser().getRole());
+        assertEquals("developer", response.getUser().getPapel());
+        assertEquals("developer", usuario.getPapel());
     }
 
     @Test

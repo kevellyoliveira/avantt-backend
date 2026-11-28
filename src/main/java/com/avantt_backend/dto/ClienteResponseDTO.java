@@ -3,7 +3,7 @@ package com.avantt_backend.dto;
 import java.time.LocalDateTime;
 
 public class ClienteResponseDTO {
-    private String id;
+    private Integer id;
     private String name;
     private String document;
     private String email;
@@ -15,8 +15,8 @@ public class ClienteResponseDTO {
 
     public ClienteResponseDTO() {}
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public Integer getId() { return id; }
+    public void setId(Integer id) { this.id = id; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

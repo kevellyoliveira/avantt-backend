@@ -7,6 +7,7 @@ import com.avantt_backend.dto.UsuarioRequestDTO;
 import com.avantt_backend.entity.Usuario;
 import com.avantt_backend.service.UsuarioService;
 import com.avantt_backend.service.AuthService;
+import com.avantt_backend.service.ProjetoService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -43,13 +45,16 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
     private final AuthService authService;
+    private final ProjetoService projetoService;
 
     public UsuarioController(
             UsuarioService usuarioService,
-            AuthService authService) {
+            AuthService authService,
+            ProjetoService projetoService) {
 
         this.usuarioService = usuarioService;
         this.authService = authService;
+        this.projetoService = projetoService;
     }
 
     @Operation(
@@ -150,7 +155,7 @@ public class UsuarioController {
 
     @Operation(
             summary = "Listar usuários",
-            description = "Retorna uma lista de todos os usuários cadastrados.")
+            description = "Retorna os usuários ativos da organização autenticada e seus projetos acessíveis.")
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -171,12 +176,49 @@ public class UsuarioController {
             produces = "application/json")
     public ResponseEntity<?> listUsuarios(
             @RequestParam(value = "projetoId", required = false)
-            Integer projetoId) {
+            Integer projetoId,
+            @RequestHeader(value = "Authorization", required = false)
+            String authorization) {
+
+        Usuario usuario = obterUsuarioAutenticado(authorization);
+        List<Integer> projetosAcessiveis =
+                projetoService.listarIdsPorOrganizacaoOuMembro(
+                        usuario.getOrganizacaoId(),
+                        usuario.getId()
+                );
+
+        if (projetoId != null && !projetosAcessiveis.contains(projetoId)) {
+            return ResponseEntity.ok(List.of());
+        }
 
         List<UsuarioResponseDTO> list =
-                usuarioService.listAll(projetoId);
+                usuarioService.listForOrganization(
+                        usuario.getOrganizacaoId(),
+                        projetoId,
+                        projetosAcessiveis
+                );
 
         return ResponseEntity.ok(list);
+    }
+
+    private Usuario obterUsuarioAutenticado(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Token de autenticação não informado ou inválido."
+            );
+        }
+
+        Usuario usuario = authService.obterUsuarioAutenticado(
+                authorization.substring(7)
+        );
+        if (usuario == null || usuario.getOrganizacaoId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Usuário autenticado não possui uma organização vinculada."
+            );
+        }
+        return usuario;
     }
 
     @Operation(

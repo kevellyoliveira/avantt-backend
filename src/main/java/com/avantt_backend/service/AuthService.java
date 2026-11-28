@@ -35,6 +35,7 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final PerfilRepository perfilRepository;
     private final EmailService emailService;
+    private final ConviteService conviteService;
 
     private final BCryptPasswordEncoder passwordEncoder =
             new BCryptPasswordEncoder();
@@ -47,11 +48,13 @@ public class AuthService {
     public AuthService(
             UsuarioRepository usuarioRepository,
             PerfilRepository perfilRepository,
-            EmailService emailService) {
+            EmailService emailService,
+            ConviteService conviteService) {
 
         this.usuarioRepository = usuarioRepository;
         this.perfilRepository = perfilRepository;
         this.emailService = emailService;
+        this.conviteService = conviteService;
     }
 
     @Transactional
@@ -78,6 +81,7 @@ public class AuthService {
         u.setNome(req.getName());
         u.setEmail(email);
         u.setCargo(req.getRole());
+        u.setPapel("developer");
         u.setOrganizacaoId(1);
         u.setSenha(passwordEncoder.encode(req.getPassword()));
 
@@ -87,6 +91,7 @@ public class AuthService {
         u.setPrimeiroAcessoValidado(false);
 
         Usuario saved = usuarioRepository.save(u);
+        conviteService.convidarSeNecessario(saved.getId());
 
         log.info(
                 "Usuario saved: id={} nome='{}' email='{}' perfilId='{}' organizacaoId='{}'",
@@ -135,6 +140,7 @@ public class AuthService {
         u.setNome(req.getName());
         u.setEmail(email);
         u.setCargo(req.getRole());
+        u.setPapel("manager");
         u.setSenha(passwordEncoder.encode(req.getPassword()));
         u.setOrganizacaoId(organizacaoId);
 
@@ -368,6 +374,15 @@ public class AuthService {
     private UsuarioResponseDTO toResponseDTO(Usuario usuario) {
 
         UsuarioResponseDTO dto = new UsuarioResponseDTO();
+        String papel = usuario.getPapel();
+
+        if (papel == null || papel.isBlank()) {
+            papel = papelPeloPerfil(usuario);
+            if (papel != null) {
+                usuario.setPapel(papel);
+                usuarioRepository.save(usuario);
+            }
+        }
 
         dto.setId(
                 usuario.getId() == null
@@ -376,13 +391,25 @@ public class AuthService {
 
         dto.setName(usuario.getNome());
         dto.setEmail(usuario.getEmail());
-        dto.setRole(usuario.getCargo());
+        dto.setRole(papel == null ? usuario.getCargo() : papel);
+        dto.setPapel(papel);
         dto.setAvatar(generateInitials(usuario.getNome()));
         dto.setColor("#2563eb");
 
         dto.setOrganizacaoId(usuario.getOrganizacaoId());
 
         return dto;
+    }
+
+    private String papelPeloPerfil(Usuario usuario) {
+        if (usuario.getPerfilId() == null) {
+            return null;
+        }
+
+        return perfilRepository.findById(usuario.getPerfilId())
+                .map(Perfil::getNome)
+                .flatMap(PerfilRoleMapper::fromProfileName)
+                .orElse(null);
     }
 
     private String generateInitials(String nome) {

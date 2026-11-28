@@ -2,7 +2,11 @@ package com.avantt_backend.controller;
 
 import com.avantt_backend.dto.SprintRequestDTO;
 import com.avantt_backend.dto.SprintResponseDTO;
+import com.avantt_backend.dto.ProjetoResponseDTO;
+import com.avantt_backend.entity.Usuario;
 import com.avantt_backend.exception.GlobalExceptionHandler;
+import com.avantt_backend.service.AuthService;
+import com.avantt_backend.service.ProjetoService;
 import com.avantt_backend.service.SprintService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -40,6 +44,12 @@ class SprintControllerTest {
 
     @Mock
     private SprintService sprintService;
+
+    @Mock
+    private ProjetoService projetoService;
+
+    @Mock
+    private AuthService authService;
 
     @InjectMocks
     private SprintController sprintController;
@@ -99,12 +109,16 @@ class SprintControllerTest {
     void putUpdate_existing_shouldReturn200() throws Exception {
         SprintRequestDTO req = new SprintRequestDTO();
         req.setName("Updated");
+        req.setProjectId(2);
         req.setStatusId(1);
         req.setStartDate(LocalDate.now());
         req.setEndDate(LocalDate.now().plusDays(20));
+        req.setGoal("Atualizar planejamento");
 
         SprintResponseDTO resp = new SprintResponseDTO();
-        resp.setId(5); resp.setName("Updated");
+        resp.setId(5);
+        resp.setName("Updated");
+        resp.setGoal("Atualizar planejamento");
 
         when(sprintService.update(eq(5), any(SprintRequestDTO.class))).thenReturn(resp);
 
@@ -112,7 +126,8 @@ class SprintControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(5));
+                .andExpect(jsonPath("$.id").value(5))
+                .andExpect(jsonPath("$.goal").value("Atualizar planejamento"));
 
         verify(sprintService).update(eq(5), any(SprintRequestDTO.class));
     }
@@ -126,5 +141,58 @@ class SprintControllerTest {
                 .andExpect(jsonPath("$.progress").value(33));
 
         verify(sprintService).recalculateAndPersistProgress(7);
+    }
+
+    @Test
+    void getSprints_withoutToken_shouldReturn401() throws Exception {
+        mockMvc.perform(get("/api/sprints"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(authService, projetoService, sprintService);
+    }
+
+    @Test
+    void getSprints_withoutProjects_shouldReturnEmptyList() throws Exception {
+        Usuario usuario = authenticatedUser();
+        when(authService.obterUsuarioAutenticado("valid-token")).thenReturn(usuario);
+        when(projetoService.listarPorOrganizacaoOuMembro(8, 21)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/sprints")
+                        .header("Authorization", "Bearer valid-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+
+        verifyNoInteractions(sprintService);
+    }
+
+    @Test
+    void getSprints_shouldOnlyListSprintsForAccessibleProjects() throws Exception {
+        Usuario usuario = authenticatedUser();
+        when(authService.obterUsuarioAutenticado("valid-token")).thenReturn(usuario);
+
+        ProjetoResponseDTO projeto = new ProjetoResponseDTO();
+        projeto.setId("17");
+        projeto.setName("Projeto da organização");
+        when(projetoService.listarPorOrganizacaoOuMembro(8, 21))
+                .thenReturn(List.of(projeto));
+
+        SprintResponseDTO sprint = new SprintResponseDTO();
+        sprint.setId(41);
+        when(sprintService.listAll("17")).thenReturn(List.of(sprint));
+
+        mockMvc.perform(get("/api/sprints")
+                        .header("Authorization", "Bearer valid-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(41));
+
+        verify(sprintService).listAll("17");
+        verify(sprintService, never()).listAll(null);
+    }
+
+    private Usuario authenticatedUser() {
+        Usuario usuario = new Usuario();
+        usuario.setId(21);
+        usuario.setOrganizacaoId(8);
+        return usuario;
     }
 }

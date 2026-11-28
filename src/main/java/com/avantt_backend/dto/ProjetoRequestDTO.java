@@ -1,6 +1,7 @@
 
 package com.avantt_backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -55,6 +56,7 @@ public class ProjetoRequestDTO {
     private List<String> risks;
 
     // Relacionamentos
+    @JsonAlias("clientId")
     private Integer clienteId;
 
     private Integer organizacaoId;

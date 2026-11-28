@@ -346,14 +346,30 @@ public class AuthController {
                     MENSAGEM_EMAIL_CADASTRADO_409);
         }
 
+        AuthRequestDTO loginRequest = new AuthRequestDTO();
+        loginRequest.setEmail(userReq.getEmail());
+        loginRequest.setPassword(userReq.getPassword());
+
+        var session = authService.login(loginRequest);
+
+        if (session == null
+                || session.isRequiresFirstAccessValidation()
+                || session.getToken() == null) {
+            throw new IllegalStateException(
+                    "Não foi possível iniciar a sessão após o cadastro.");
+        }
+
         java.util.Map<String, Object> resp =
                 new java.util.LinkedHashMap<>();
 
         resp.put("organizacao", organization);
         resp.put("organization", organization);
         resp.put("usuario", createdUser);
-        resp.put("user", createdUser);
+        resp.put("user", session.getUser());
+        resp.put("token", session.getToken());
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header("Authorization", "Bearer " + session.getToken())
+                .body(resp);
     }
 }

@@ -29,6 +29,7 @@ public class ClienteRequestDTO {
     private String email;
 
     @Size(max = 50)
+    @JsonAlias({"telefone"})
     private String phone;
 
     @JsonAlias({"usuario_gestor", "defaultUser", "default_user"})

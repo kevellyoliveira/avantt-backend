@@ -22,6 +22,7 @@ public interface TarefaRepository extends JpaRepository<Tarefa, Integer> {
 
     // Busca todas as tarefas do projeto, inclusive as tarefas do backlog.
     List<Tarefa> findByProjetoId(Integer projetoId);
+    List<Tarefa> findByProjetoIdIn(List<Integer> projetoIds);
 
     @Query(
             value = "SELECT COUNT(*) FROM tarefa t " +
